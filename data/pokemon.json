@@ -1,0 +1,368 @@
+[
+ {
+  "name": "Bulbasaur",
+  "stats": [
+   45,
+   49,
+   49,
+   65,
+   65,
+   45
+  ],
+  "types": [
+   "Grass",
+   "Poison"
+  ]
+ },
+ {
+  "name": "Charizard",
+  "stats": [
+   78,
+   84,
+   78,
+   109,
+   85,
+   100
+  ],
+  "types": [
+   "Fire",
+   "Flying"
+  ]
+ },
+ {
+  "name": "Blastoise",
+  "stats": [
+   79,
+   83,
+   100,
+   85,
+   105,
+   78
+  ],
+  "types": [
+   "Water"
+  ]
+ },
+ {
+  "name": "Pikachu",
+  "stats": [
+   35,
+   55,
+   40,
+   50,
+   50,
+   90
+  ],
+  "types": [
+   "Electric"
+  ]
+ },
+ {
+  "name": "Gengar",
+  "stats": [
+   60,
+   65,
+   60,
+   130,
+   75,
+   110
+  ],
+  "types": [
+   "Ghost",
+   "Poison"
+  ]
+ },
+ {
+  "name": "Dragonite",
+  "stats": [
+   91,
+   134,
+   95,
+   100,
+   100,
+   80
+  ],
+  "types": [
+   "Dragon",
+   "Flying"
+  ]
+ },
+ {
+  "name": "Mewtwo",
+  "stats": [
+   106,
+   110,
+   90,
+   154,
+   90,
+   130
+  ],
+  "types": [
+   "Psychic"
+  ]
+ },
+ {
+  "name": "Snorlax",
+  "stats": [
+   160,
+   110,
+   65,
+   65,
+   110,
+   30
+  ],
+  "types": [
+   "Normal"
+  ]
+ },
+ {
+  "name": "Gyarados",
+  "stats": [
+   95,
+   125,
+   79,
+   60,
+   100,
+   81
+  ],
+  "types": [
+   "Water",
+   "Flying"
+  ]
+ },
+ {
+  "name": "Garchomp",
+  "stats": [
+   108,
+   130,
+   95,
+   80,
+   85,
+   102
+  ],
+  "types": [
+   "Dragon",
+   "Ground"
+  ]
+ },
+ {
+  "name": "Lucario",
+  "stats": [
+   70,
+   110,
+   70,
+   115,
+   70,
+   90
+  ],
+  "types": [
+   "Fighting",
+   "Steel"
+  ]
+ },
+ {
+  "name": "Tyranitar",
+  "stats": [
+   100,
+   134,
+   110,
+   95,
+   100,
+   61
+  ],
+  "types": [
+   "Rock",
+   "Dark"
+  ]
+ },
+ {
+  "name": "Gardevoir",
+  "stats": [
+   68,
+   65,
+   65,
+   125,
+   115,
+   80
+  ],
+  "types": [
+   "Psychic",
+   "Fairy"
+  ]
+ },
+ {
+  "name": "Scizor",
+  "stats": [
+   70,
+   130,
+   100,
+   55,
+   80,
+   65
+  ],
+  "types": [
+   "Bug",
+   "Steel"
+  ]
+ },
+ {
+  "name": "Alakazam",
+  "stats": [
+   55,
+   50,
+   45,
+   135,
+   95,
+   120
+  ],
+  "types": [
+   "Psychic"
+  ]
+ },
+ {
+  "name": "Machamp",
+  "stats": [
+   90,
+   130,
+   80,
+   65,
+   85,
+   55
+  ],
+  "types": [
+   "Fighting"
+  ]
+ },
+ {
+  "name": "Blissey",
+  "stats": [
+   255,
+   10,
+   10,
+   75,
+   135,
+   55
+  ],
+  "types": [
+   "Normal"
+  ]
+ },
+ {
+  "name": "Salamence",
+  "stats": [
+   95,
+   135,
+   80,
+   110,
+   80,
+   100
+  ],
+  "types": [
+   "Dragon",
+   "Flying"
+  ]
+ },
+ {
+  "name": "Metagross",
+  "stats": [
+   80,
+   135,
+   130,
+   95,
+   90,
+   70
+  ],
+  "types": [
+   "Steel",
+   "Psychic"
+  ]
+ },
+ {
+  "name": "Greninja",
+  "stats": [
+   72,
+   95,
+   67,
+   103,
+   71,
+   122
+  ],
+  "types": [
+   "Water",
+   "Dark"
+  ]
+ },
+ {
+  "name": "Umbreon",
+  "stats": [
+   95,
+   65,
+   110,
+   60,
+   130,
+   65
+  ],
+  "types": [
+   "Dark"
+  ]
+ },
+ {
+  "name": "Eevee",
+  "stats": [
+   55,
+   55,
+   50,
+   45,
+   65,
+   55
+  ],
+  "types": [
+   "Normal"
+  ]
+ },
+ {
+  "name": "Ferrothorn",
+  "stats": [
+   74,
+   94,
+   131,
+   54,
+   116,
+   20
+  ],
+  "types": [
+   "Grass",
+   "Steel"
+  ]
+ },
+ {
+  "name": "Kingdra",
+  "stats": [
+   75,
+   95,
+   95,
+   95,
+   95,
+   85
+  ],
+  "types": [
+   "Water",
+   "Dragon"
+  ]
+ },
+ {
+  "name": "Rayquaza",
+  "stats": [
+   105,
+   150,
+   90,
+   150,
+   90,
+   95
+  ],
+  "types": [
+   "Dragon",
+   "Flying"
+  ]
+ }
+]

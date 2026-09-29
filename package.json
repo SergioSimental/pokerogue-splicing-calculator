@@ -1,0 +1,14 @@
+{
+  "name": "pokerogue-splicing-calculator",
+  "version": "1.0.0",
+  "description": "Fusion (splicing) stat and type calculator for PokeRogue",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "serve": "python -m http.server 8000"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
