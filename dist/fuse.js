@@ -1,16 +1,16 @@
 /**
  * Fusion rules live here so they are easy to update if the game changes.
- * - Each base stat is the average of head and body, rounded up.
- * - Primary type is the head's primary type.
- * - Secondary type is the body's secondary type (or its primary if it has none),
- *   falling back to the head's secondary type when it would duplicate the primary.
+ * - Each base stat is the average of the primary and secondary Pokémon, rounded up.
+ * - Primary type is the primary Pokémon's primary type.
+ * - Secondary type is the secondary Pokémon's secondary type (or its primary if it has none),
+ *   falling back to the primary Pokémon's secondary type when it would duplicate the primary type.
  */
-export function fuse(head, body) {
-    const stats = head.stats.map((v, i) => Math.ceil((v + (body.stats[i] ?? 0)) / 2));
-    const primary = head.types[0];
-    let secondary = body.types[1] ?? body.types[0];
-    if (secondary === primary)
-        secondary = head.types[1];
-    const types = secondary ? [primary, secondary] : [primary];
+export function fuse(primary, secondary) {
+    const stats = primary.stats.map((v, i) => Math.ceil((v + (secondary.stats[i] ?? 0)) / 2));
+    const primaryType = primary.types[0];
+    let secondaryType = secondary.types[1] ?? secondary.types[0];
+    if (secondaryType === primaryType)
+        secondaryType = primary.types[1];
+    const types = secondaryType ? [primaryType, secondaryType] : [primaryType];
     return { stats, types };
 }

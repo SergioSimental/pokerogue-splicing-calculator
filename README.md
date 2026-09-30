@@ -15,9 +15,9 @@ The compiled `dist/` folder is committed, so no CI is needed. Run `npm run build
 
 ## Fusion rules
 Implemented in `fuse()` in `src/fuse.ts`:
-- Each base stat = average of head and body, rounded up.
-- Primary type = head's primary type.
-- Secondary type = body's secondary type (or body's primary if it has none), skipping duplicates.
+- Each base stat = average of the primary and secondary Pokémon, rounded up.
+- Primary type = primary Pokémon's primary type.
+- Secondary type = secondary Pokémon's secondary type (or its primary type if it has none), skipping duplicates.
 
 These rules are from memory of the game's behavior. Please verify against the current game and open an issue or PR if they differ.
 

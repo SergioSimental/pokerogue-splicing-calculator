@@ -10,21 +10,21 @@
 <body>
 <main>
   <h1>PokeRogue Splicing Calculator</h1>
-  <p class="lede">Pick a head and a body Pokémon to see the fusion's base stats and typing.</p>
+  <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing.</p>
 
   <section class="pickers">
-    <label>Head (first Pokémon)
-      <select id="head"></select>
+    <label>Primary (first Pokémon)
+      <select id="primary"></select>
     </label>
-    <button id="swap" type="button" aria-label="Swap head and body">⇄</button>
-    <label>Body (fused Pokémon)
-      <select id="body"></select>
+    <button id="swap" type="button" aria-label="Swap primary and secondary">⇄</button>
+    <label>Secondary (second Pokémon)
+      <select id="secondary"></select>
     </label>
   </section>
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Primary type comes from the head, secondary type from the body. Edit <code>fuse()</code> in <code>src/fuse.ts</code> if the game changes.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. Edit <code>fuse()</code> in <code>src/fuse.ts</code> if the game changes.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>

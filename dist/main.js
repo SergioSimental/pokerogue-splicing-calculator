@@ -15,30 +15,30 @@ function el(id) {
         throw new Error(`Missing element #${id}`);
     return node;
 }
-const headSelect = el("head");
-const bodySelect = el("body");
+const primarySelect = el("primary");
+const secondarySelect = el("secondary");
 const result = el("result");
 const pct = (v) => `${(v / MAX_STAT) * 100}%`;
 function render() {
-    const head = dex[Number(headSelect.value)];
-    const body = dex[Number(bodySelect.value)];
-    if (!head || !body)
+    const primary = dex[Number(primarySelect.value)];
+    const secondary = dex[Number(secondarySelect.value)];
+    if (!primary || !secondary)
         return;
-    const f = fuse(head, body);
+    const f = fuse(primary, secondary);
     const rows = STAT_NAMES.map((name, i) => {
-        const h = head.stats[i] ?? 0, b = body.stats[i] ?? 0, v = f.stats[i] ?? 0;
+        const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
         return `<div class="stat"><span>${name}</span><strong>${v}</strong>
       <div class="track"><div class="fill" style="width:${pct(v)}"></div>
-        <span class="tick h" title="${head.name}: ${h}" style="left:calc(${pct(h)} - 2px)"></span>
-        <span class="tick b" title="${body.name}: ${b}" style="left:calc(${pct(b)} - 2px)"></span>
+        <span class="tick p" title="${primary.name}: ${p}" style="left:calc(${pct(p)} - 2px)"></span>
+        <span class="tick s" title="${secondary.name}: ${s}" style="left:calc(${pct(s)} - 2px)"></span>
       </div></div>`;
     }).join("");
     const total = f.stats.reduce((a, b) => a + b, 0);
     const chips = f.types.map(t => `<span class="type" style="background:${COLORS[t]}">${t}</span>`).join("");
-    result.innerHTML = `<h2>${head.name} + ${body.name}</h2>
+    result.innerHTML = `<h2>${primary.name} + ${secondary.name}</h2>
     <div class="types">${chips}</div>${rows}
     <div class="total">Base stat total: ${total}</div>
-    <div class="legend">Markers show the <b>head</b> and <b>body</b> values.</div>`;
+    <div class="legend">Markers show the <b>primary</b> and <b>secondary</b> values.</div>`;
 }
 async function init() {
     try {
@@ -53,12 +53,12 @@ async function init() {
     }
     dex.sort((a, b) => a.name.localeCompare(b.name));
     const opts = dex.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
-    headSelect.innerHTML = bodySelect.innerHTML = opts;
-    headSelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
-    bodySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
-    headSelect.onchange = bodySelect.onchange = render;
+    primarySelect.innerHTML = secondarySelect.innerHTML = opts;
+    primarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
+    secondarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
+    primarySelect.onchange = secondarySelect.onchange = render;
     el("swap").onclick = () => {
-        [headSelect.value, bodySelect.value] = [bodySelect.value, headSelect.value];
+        [primarySelect.value, secondarySelect.value] = [secondarySelect.value, primarySelect.value];
         render();
     };
     render();
