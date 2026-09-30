@@ -14,17 +14,39 @@
 
   <section class="pickers">
     <label>Primary (first Pokémon)
+      <select id="primary"></select<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PokeRogue Splicing Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>PokeRogue Splicing Calculator</h1>
+  <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing.</p>
+
+  <section class="pickers">
+    <label>Primary (first Pokémon)
       <select id="primary"></select>
     </label>
     <button id="swap" type="button" aria-label="Swap primary and secondary">⇄</button>
-    <label>Secondary (second Pokémon)
+    <label>Secondary (fused Pokémon)
       <select id="secondary"></select>
+    </label>
+  </section>
+
+  <section class="levelrow">
+    <label class="level">Level of first pokemon (1 or higher)
+      <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
     </label>
   </section>
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. Edit <code>fuse()</code> in <code>src/fuse.ts</code> if the game changes.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at your chosen level assume 31 IVs and a neutral nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>
