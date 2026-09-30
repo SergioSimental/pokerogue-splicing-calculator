@@ -14,3 +14,21 @@ export function fuse(primary, secondary) {
     const types = secondaryType ? [primaryType, secondaryType] : [primaryType];
     return { stats, types };
 }
+export const MIN_LEVEL = 1;
+/** Not a game limit: just keeps the math within exact whole-number range. */
+export const MAX_LEVEL = 1000000000000;
+/** Clamp any input to a whole level between MIN_LEVEL and MAX_LEVEL. */
+export function clampLevel(value) {
+    if (!Number.isFinite(value))
+        return MIN_LEVEL;
+    return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.floor(value)));
+}
+/**
+ * Stat at a given level with a neutral nature. Stat index 0 is HP.
+ * HP:    floor((2 * base + iv) * level / 100) + level + 10
+ * Other: floor((2 * base + iv) * level / 100) + 5
+ */
+export function statAtLevel(statIndex, base, level, iv = 31) {
+    const core = Math.floor(((2 * base + iv) * level) / 100);
+    return statIndex === 0 ? core + level + 10 : core + 5;
+}
