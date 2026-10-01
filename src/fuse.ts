@@ -31,7 +31,16 @@ export function clampLevel(value: number): number {
  * HP:    floor((2 * base + iv) * level / 100) + level + 10
  * Other: floor((2 * base + iv) * level / 100) + 5
  */
-export function statAtLevel(statIndex: number, base: number, level: number, iv = 31): number {
+export function statAtLevel(statIndex: number, base: number, level: number, iv: number): number {
   const core = Math.floor(((2 * base + iv) * level) / 100);
   return statIndex === 0 ? core + level + 10 : core + 5;
+}
+
+export const MIN_IV = 0;
+export const MAX_IV = 31;
+
+/** Clamp any input to a whole IV between MIN_IV and MAX_IV. */
+export function clampIv(value: number): number {
+  if (!Number.isFinite(value)) return MIN_IV;
+  return Math.min(MAX_IV, Math.max(MIN_IV, Math.floor(value)));
 }

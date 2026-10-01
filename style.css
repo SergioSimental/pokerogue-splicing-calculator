@@ -30,3 +30,12 @@ button{cursor:pointer;font-size:1.2rem}
 .lvl{text-align:right;font-weight:600}
 .stat.labels{font-size:.8rem;opacity:.7;margin-bottom:0}
 .stat.labels .lvl{font-weight:400}
+
+.levelrow{max-width:none}.levelrow .level{max-width:22rem}
+.ivrow{margin-top:1rem}
+.ivrow fieldset{border:2px solid var(--line);border-radius:6px;padding:.5rem .75rem .75rem;margin:0}
+.ivrow legend{font-weight:600;padding:0 .4rem}
+.ivrow fieldset{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem}
+.ivrow legend{grid-column:1/-1}
+.ivrow label{font-size:.85rem}.ivrow input{width:100%;padding:.4rem}
+@media(max-width:520px){.ivrow fieldset{grid-template-columns:repeat(3,1fr)}}

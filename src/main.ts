@@ -1,4 +1,4 @@
-import { clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
 const COLORS: Record<PokemonType, string> = {
@@ -20,6 +20,7 @@ function el<T extends HTMLElement>(id: string): T {
 const primarySelect = el<HTMLSelectElement>("primary");
 const secondarySelect = el<HTMLSelectElement>("secondary");
 const levelInput = el<HTMLInputElement>("level");
+const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
 const result = el<HTMLElement>("result");
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -31,7 +32,8 @@ function render(): void {
   if (!primary || !secondary) return;
   const f = fuse(primary, secondary);
   const level = clampLevel(Number(levelInput.value));
-  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level));
+  const ivs = ivInputs.map(input => clampIv(Number(input.value)));
+  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0));
 
   const rows = STAT_NAMES.map((name, i) => {
     const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
@@ -66,6 +68,13 @@ async function init(): Promise<void> {
   primarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
   secondarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
   primarySelect.onchange = secondarySelect.onchange = render;
+  for (const input of ivInputs) {
+    input.oninput = render;
+    input.onchange = () => {
+      input.value = String(clampIv(Number(input.value)));
+      render();
+    };
+  }
   levelInput.oninput = render;
   levelInput.onchange = () => {
     levelInput.value = String(clampLevel(Number(levelInput.value)));
