@@ -22,9 +22,9 @@ Implemented in `fuse()` in `src/fuse.ts`:
 These rules are from memory of the game's behavior. Please verify against the current game and open an issue or PR if they differ.
 
 ## Levels
-The level box accepts any whole number from 1 upward (there is no game-style cap; a ceiling of 1 trillion just keeps the math exact). Stats at that level use the standard formula with 31 IVs and a neutral nature:
-- HP: `floor((2 * base + 31) * level / 100) + level + 10`
-- Other stats: `floor((2 * base + 31) * level / 100) + 5`
+Level and IVs apply to the **primary** Pokémon only. The calculator first averages the two base stats (rounded up), then applies the primary Pokémon's IVs (0 to 31 per stat) and level. The level box accepts any whole number from 1 upward (there is no game-style cap; a ceiling of 1 trillion just keeps the math exact). Stats at that level use the standard formula with the IVs you enter (default 31) and a neutral nature:
+- HP: `floor((2 * base + iv) * level / 100) + level + 10`
+- Other stats: `floor((2 * base + iv) * level / 100) + 5`
 
 ## Data
 `data/pokemon.json` holds a starter set of 25 Pokémon:

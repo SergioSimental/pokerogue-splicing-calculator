@@ -1,4 +1,4 @@
-import { clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
 const COLORS: Record<PokemonType, string> = {
@@ -20,9 +20,36 @@ function el<T extends HTMLElement>(id: string): T {
 const primarySelect = el<HTMLSelectElement>("primary");
 const secondarySelect = el<HTMLSelectElement>("secondary");
 const levelInput = el<HTMLInputElement>("level");
+const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
 const result = el<HTMLElement>("result");
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+const CONTROL_KEYS = new Set([
+  "Backspace", "Delete", "Tab", "Enter", "Escape",
+  "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
+]);
+
+/** Block every key except 0-9 (and editing/navigation keys) from reaching the box. */
+function restrictToDigits(input: HTMLInputElement): void {
+  input.addEventListener("keydown", e => {
+    if (e.ctrlKey || e.metaKey || e.altKey || CONTROL_KEYS.has(e.key)) return;
+    if (e.key.length === 1 && !/[0-9]/.test(e.key)) e.preventDefault();
+  });
+  // Covers on-screen keyboards, where keydown does not report the real key.
+  input.addEventListener("beforeinput", e => {
+    if (e.data && /\D/.test(e.data)) e.preventDefault();
+  });
+  // Pasted text keeps digits only.
+  input.addEventListener("paste", e => {
+    e.preventDefault();
+    const digits = (e.clipboardData?.getData("text") ?? "").replace(/\D/g, "");
+    if (digits) {
+      input.value = digits;
+      input.dispatchEvent(new Event("input"));
+    }
+  });
+}
+
 const pct = (v: number) => `${(v / MAX_STAT) * 100}%`;
 
 function render(): void {
@@ -31,7 +58,8 @@ function render(): void {
   if (!primary || !secondary) return;
   const f = fuse(primary, secondary);
   const level = clampLevel(Number(levelInput.value));
-  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level));
+  const ivs = ivInputs.map(input => clampIv(Number(input.value)));
+  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0));
 
   const rows = STAT_NAMES.map((name, i) => {
     const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
@@ -66,6 +94,13 @@ async function init(): Promise<void> {
   primarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
   secondarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
   primarySelect.onchange = secondarySelect.onchange = render;
+  for (const input of ivInputs) {
+    input.oninput = render;
+    input.onchange = () => {
+      input.value = String(clampIv(Number(input.value)));
+      render();
+    };
+  }
   levelInput.oninput = render;
   levelInput.onchange = () => {
     levelInput.value = String(clampLevel(Number(levelInput.value)));
@@ -77,5 +112,8 @@ async function init(): Promise<void> {
   };
   render();
 }
+
+// Attach key blocking immediately, even if the data file fails to load.
+for (const input of [levelInput, ...ivInputs]) restrictToDigits(input);
 
 void init();
