@@ -21,6 +21,33 @@ const levelInput = el("level");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
 const result = el("result");
 const fmt = (n) => n.toLocaleString("en-US");
+const CONTROL_KEYS = new Set([
+    "Backspace", "Delete", "Tab", "Enter", "Escape",
+    "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
+]);
+/** Block every key except 0-9 (and editing/navigation keys) from reaching the box. */
+function restrictToDigits(input) {
+    input.addEventListener("keydown", e => {
+        if (e.ctrlKey || e.metaKey || e.altKey || CONTROL_KEYS.has(e.key))
+            return;
+        if (e.key.length === 1 && !/[0-9]/.test(e.key))
+            e.preventDefault();
+    });
+    // Covers on-screen keyboards, where keydown does not report the real key.
+    input.addEventListener("beforeinput", e => {
+        if (e.data && /\D/.test(e.data))
+            e.preventDefault();
+    });
+    // Pasted text keeps digits only.
+    input.addEventListener("paste", e => {
+        e.preventDefault();
+        const digits = (e.clipboardData?.getData("text") ?? "").replace(/\D/g, "");
+        if (digits) {
+            input.value = digits;
+            input.dispatchEvent(new Event("input"));
+        }
+    });
+}
 const pct = (v) => `${(v / MAX_STAT) * 100}%`;
 function render() {
     const primary = dex[Number(primarySelect.value)];
@@ -82,4 +109,7 @@ async function init() {
     };
     render();
 }
+// Attach key blocking immediately, even if the data file fails to load.
+for (const input of [levelInput, ...ivInputs])
+    restrictToDigits(input);
 void init();
