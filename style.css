@@ -39,3 +39,5 @@ button{cursor:pointer;font-size:1.2rem}
 .ivrow legend{grid-column:1/-1}
 .ivrow label{font-size:.85rem}.ivrow input{width:100%;padding:.4rem}
 @media(max-width:520px){.ivrow fieldset{grid-template-columns:repeat(3,1fr)}}
+
+.naturerow{margin-top:1rem;max-width:22rem}.naturerow select{width:100%}

@@ -1,4 +1,5 @@
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
 const COLORS: Record<PokemonType, string> = {
@@ -21,6 +22,7 @@ const primarySelect = el<HTMLSelectElement>("primary");
 const secondarySelect = el<HTMLSelectElement>("secondary");
 const levelInput = el<HTMLInputElement>("level");
 const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
+const natureSelect = el<HTMLSelectElement>("nature");
 const result = el<HTMLElement>("result");
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -59,7 +61,7 @@ function render(): void {
   const f = fuse(primary, secondary);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0));
+  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[Number(natureSelect.value)], i)));
 
   const rows = STAT_NAMES.map((name, i) => {
     const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
@@ -101,6 +103,7 @@ async function init(): Promise<void> {
       render();
     };
   }
+  natureSelect.onchange = render;
   levelInput.oninput = render;
   levelInput.onchange = () => {
     levelInput.value = String(clampLevel(Number(levelInput.value)));
@@ -115,5 +118,6 @@ async function init(): Promise<void> {
 
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs]) restrictToDigits(input);
+natureSelect.innerHTML = NATURES.map((n, i) => `<option value="${i}">${natureLabel(n)}</option>`).join("");
 
 void init();

@@ -22,6 +22,12 @@
     </label>
   </section>
 
+  <section class="naturerow">
+    <label class="nature">Nature of the primary Pokémon
+      <select id="nature"></select>
+    </label>
+  </section>
+
   <section class="levelrow">
     <label class="level">Level of the primary Pokémon (1 or higher)
       <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
@@ -42,7 +48,7 @@
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level and IVs, and a neutral nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. Edit <code>fuse()</code> in <code>src/fuse.ts</code> if the game changes.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level and IVs, and a neutral nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>
