@@ -29,12 +29,12 @@ Level and IVs apply to the **primary** Pokémon only. The calculator first avera
 The 25 natures and their order match PokeRogue's `src/data/nature.ts`.
 
 ## Data
-`data/pokemon.json` holds a starter set of 25 Pokémon:
+`data/pokemon.json` holds every species defined in PokeRogue's source (1,084), plus 235 alternate forms (Mega, G-Max, Primal, and others), for 1,319 entries in total. Regional variants such as Alolan and Galarian forms are separate species. It was extracted from `src/data/balance/species/generation-01.ts` through `generation-09.ts` in [pagefaultgames/pokerogue](https://github.com/pagefaultgames/pokerogue) (AGPL-3.0). Alternate forms are listed as `Species (Form)`, and forms with the same types and base stats as their base species (cosmetic ones like Unown letters or Vivillon patterns) are skipped.
 
 ```json
 { "name": "Garchomp", "stats": [108,130,95,80,85,102], "types": ["Dragon","Ground"] }
 ```
-Stats are in order HP, Atk, Def, SpA, SpD, Spe. Add more entries to extend the calculator.
+Stats are in order HP, Atk, Def, SpA, SpD, Spe. Display names are generated from the game's species IDs, so a few may differ slightly from in-game spelling.
 
 ## Roadmap
 - Full Pokédex data (e.g. generated from PokeAPI)
