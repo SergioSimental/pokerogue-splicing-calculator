@@ -40,4 +40,6 @@ button{cursor:pointer;font-size:1.2rem}
 .ivrow label{font-size:.85rem}.ivrow input{width:100%;padding:.4rem}
 @media(max-width:520px){.ivrow fieldset{grid-template-columns:repeat(3,1fr)}}
 
-.naturerow{margin-top:1rem;max-width:22rem}.naturerow select{width:100%}
+.naturerow{margin-top:1rem;max-width:22rem}.naturerow select,.naturerow input{width:100%}
+.pickers input[type=search],.naturerow input[type=search]{padding:.4rem .6rem;font-size:.9rem;font-weight:400;width:100%}
+.pickers select{width:100%}
