@@ -24,13 +24,15 @@ export function clampLevel(value) {
     return Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, Math.floor(value)));
 }
 /**
- * Stat at a given level with a neutral nature. Stat index 0 is HP.
+ * Stat at a given level. Stat index 0 is HP.
  * HP:    floor((2 * base + iv) * level / 100) + level + 10
- * Other: floor((2 * base + iv) * level / 100) + 5
+ * Other: floor(floor((2 * base + iv) * level / 100) + 5) * nature) where nature is 1.1, 0.9 or 1
  */
-export function statAtLevel(statIndex, base, level, iv) {
+export function statAtLevel(statIndex, base, level, iv, nature = 1) {
     const core = Math.floor(((2 * base + iv) * level) / 100);
-    return statIndex === 0 ? core + level + 10 : core + 5;
+    if (statIndex === 0)
+        return core + level + 10;
+    return Math.floor((core + 5) * nature);
 }
 export const MIN_IV = 0;
 export const MAX_IV = 31;
