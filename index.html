@@ -13,15 +13,21 @@
   <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing.</p>
 
   <section class="pickers">
-    <label>Primary (first Pokémon)
-      <input id="primary-filter" type="search" placeholder="Filter by name or type" autocomplete="off" aria-label="Filter primary Pokémon">
-      <select id="primary"></select>
-    </label>
+    <div class="field">
+      <label for="primary">Primary (first Pokémon)</label>
+      <div class="combo">
+        <input id="primary" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="primary-list"></ul>
+      </div>
+    </div>
     <button id="swap" type="button" aria-label="Swap primary and secondary">⇄</button>
-    <label>Secondary (fused Pokémon)
-      <input id="secondary-filter" type="search" placeholder="Filter by name or type" autocomplete="off" aria-label="Filter secondary Pokémon">
-      <select id="secondary"></select>
-    </label>
+    <div class="field">
+      <label for="secondary">Secondary (fused Pokémon)</label>
+      <div class="combo">
+        <input id="secondary" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="secondary-list"></ul>
+      </div>
+    </div>
   </section>
 
   <section class="levelrow">
@@ -31,10 +37,13 @@
   </section>
 
   <section class="naturerow">
-    <label class="nature">Nature of the primary Pokémon
-      <input id="nature-filter" type="search" placeholder="Filter by name or stat, e.g. adamant or spe" autocomplete="off" aria-label="Filter natures">
-      <select id="nature"></select>
-    </label>
+    <div class="field nature">
+      <label for="nature">Nature of the primary Pokémon</label>
+      <div class="combo">
+        <input id="nature" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="nature-list"></ul>
+      </div>
+    </div>
   </section>
 
   <section class="ivrow">
