@@ -13,25 +13,37 @@
   <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing.</p>
 
   <section class="pickers">
-    <label>Primary (first Pokémon)
-      <select id="primary"></select>
-    </label>
+    <div class="field">
+      <label for="primary">Primary (first Pokémon)</label>
+      <div class="combo">
+        <input id="primary" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="primary-list"></ul>
+      </div>
+    </div>
     <button id="swap" type="button" aria-label="Swap primary and secondary">⇄</button>
-    <label>Secondary (fused Pokémon)
-      <select id="secondary"></select>
-    </label>
-  </section>
-
-  <section class="naturerow">
-    <label class="nature">Nature of the primary Pokémon
-      <select id="nature"></select>
-    </label>
+    <div class="field">
+      <label for="secondary">Secondary (fused Pokémon)</label>
+      <div class="combo">
+        <input id="secondary" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="secondary-list"></ul>
+      </div>
+    </div>
   </section>
 
   <section class="levelrow">
     <label class="level">Level of the primary Pokémon (1 or higher)
       <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
     </label>
+  </section>
+
+  <section class="naturerow">
+    <div class="field nature">
+      <label for="nature">Nature of the primary Pokémon</label>
+      <div class="combo">
+        <input id="nature" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+        <ul id="nature-list"></ul>
+      </div>
+    </div>
   </section>
 
   <section class="ivrow">
@@ -48,7 +60,7 @@
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level and IVs, and a neutral nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>

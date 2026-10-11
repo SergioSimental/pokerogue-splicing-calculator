@@ -7,7 +7,7 @@ h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;line-height:1.05;margin:0 0 
 .lede{margin:0 0 1.5rem}
 .pickers{display:grid;grid-template-columns:1fr auto 1fr;gap:.75rem;align-items:end}
 label{display:grid;gap:.25rem;font-weight:600}
-.pickers label:first-child{color:var(--primary)}.pickers label:last-of-type{color:var(--secondary)}
+.pickers .field:first-of-type label{color:var(--primary)}.pickers .field:last-of-type label{color:var(--secondary)}
 select,button,input{font:inherit;padding:.6rem;border:2px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
 button{cursor:pointer;font-size:1.2rem}
 :focus-visible{outline:3px solid var(--secondary);outline-offset:2px}
@@ -40,4 +40,14 @@ button{cursor:pointer;font-size:1.2rem}
 .ivrow label{font-size:.85rem}.ivrow input{width:100%;padding:.4rem}
 @media(max-width:520px){.ivrow fieldset{grid-template-columns:repeat(3,1fr)}}
 
-.naturerow{margin-top:1rem;max-width:22rem}.naturerow select{width:100%}
+.naturerow{margin-top:1rem;max-width:22rem}
+.field{display:grid;gap:.25rem}.field>label{font-weight:600}
+.combo{position:relative}
+.combo input{width:100%;padding-right:2rem;cursor:pointer;text-overflow:ellipsis}
+.combo input:disabled{opacity:.6;cursor:wait}
+.combo::after{content:"\25BE";position:absolute;right:.7rem;top:50%;transform:translateY(-50%);pointer-events:none}
+.combo ul{position:absolute;z-index:10;left:0;right:0;top:calc(100% + 2px);max-height:16rem;overflow:auto;margin:0;padding:.25rem;list-style:none;background:var(--card);border:2px solid var(--line);border-radius:6px;box-shadow:0 8px 24px rgb(0 0 0/.25)}
+.combo li{padding:.4rem .6rem;border-radius:4px;cursor:pointer;font-weight:400}
+.combo li[aria-selected=true]{font-weight:700}
+.combo li.active{background:var(--line)}
+.combo li.empty{opacity:.6;cursor:default}

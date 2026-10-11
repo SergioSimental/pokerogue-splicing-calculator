@@ -1,4 +1,6 @@
+import { Combobox, normalize } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES } from "./types.js";
 const COLORS = {
     Normal: "#8a8a72", Fire: "#e2622a", Water: "#4a7fd6", Electric: "#c9a010",
@@ -15,12 +17,14 @@ function el(id) {
         throw new Error(`Missing element #${id}`);
     return node;
 }
-const primarySelect = el("primary");
-const secondarySelect = el("secondary");
+const primaryBox = new Combobox(el("primary"), el("primary-list"), render);
+const secondaryBox = new Combobox(el("secondary"), el("secondary-list"), render);
+const natureBox = new Combobox(el("nature"), el("nature-list"), render);
 const levelInput = el("level");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
 const result = el("result");
 const fmt = (n) => n.toLocaleString("en-US");
+const natureChoices = NATURES.map(n => ({ label: natureLabel(n), text: normalize(natureLabel(n)) }));
 const CONTROL_KEYS = new Set([
     "Backspace", "Delete", "Tab", "Enter", "Escape",
     "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
@@ -50,14 +54,14 @@ function restrictToDigits(input) {
 }
 const pct = (v) => `${(v / MAX_STAT) * 100}%`;
 function render() {
-    const primary = dex[Number(primarySelect.value)];
-    const secondary = dex[Number(secondarySelect.value)];
+    const primary = dex[primaryBox.index];
+    const secondary = dex[secondaryBox.index];
     if (!primary || !secondary)
         return;
     const f = fuse(primary, secondary);
     const level = clampLevel(Number(levelInput.value));
     const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-    const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0));
+    const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i)));
     const rows = STAT_NAMES.map((name, i) => {
         const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
         return `<div class="stat"><span>${name}</span>
@@ -86,11 +90,9 @@ async function init() {
         return;
     }
     dex.sort((a, b) => a.name.localeCompare(b.name));
-    const opts = dex.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
-    primarySelect.innerHTML = secondarySelect.innerHTML = opts;
-    primarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
-    secondarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
-    primarySelect.onchange = secondarySelect.onchange = render;
+    const dexChoices = dex.map(p => ({ label: p.name, text: normalize(`${p.name} ${p.types.join(" ")}`) }));
+    primaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Charizard")));
+    secondaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
     for (const input of ivInputs) {
         input.oninput = render;
         input.onchange = () => {
@@ -104,7 +106,11 @@ async function init() {
         render();
     };
     el("swap").onclick = () => {
-        [primarySelect.value, secondarySelect.value] = [secondarySelect.value, primarySelect.value];
+        const [a, b] = [primaryBox.index, secondaryBox.index];
+        if (a < 0 || b < 0)
+            return;
+        primaryBox.setIndex(b);
+        secondaryBox.setIndex(a);
         render();
     };
     render();
@@ -112,4 +118,5 @@ async function init() {
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs])
     restrictToDigits(input);
+natureBox.setChoices(natureChoices, 0);
 void init();

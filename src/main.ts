@@ -1,3 +1,4 @@
+import { Combobox, normalize, type Choice } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
@@ -18,14 +19,16 @@ function el<T extends HTMLElement>(id: string): T {
   if (!node) throw new Error(`Missing element #${id}`);
   return node as T;
 }
-const primarySelect = el<HTMLSelectElement>("primary");
-const secondarySelect = el<HTMLSelectElement>("secondary");
+const primaryBox = new Combobox(el<HTMLInputElement>("primary"), el<HTMLUListElement>("primary-list"), render);
+const secondaryBox = new Combobox(el<HTMLInputElement>("secondary"), el<HTMLUListElement>("secondary-list"), render);
+const natureBox = new Combobox(el<HTMLInputElement>("nature"), el<HTMLUListElement>("nature-list"), render);
 const levelInput = el<HTMLInputElement>("level");
 const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
-const natureSelect = el<HTMLSelectElement>("nature");
 const result = el<HTMLElement>("result");
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+
+const natureChoices: Choice[] = NATURES.map(n => ({ label: natureLabel(n), text: normalize(natureLabel(n)) }));
 const CONTROL_KEYS = new Set([
   "Backspace", "Delete", "Tab", "Enter", "Escape",
   "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
@@ -55,13 +58,13 @@ function restrictToDigits(input: HTMLInputElement): void {
 const pct = (v: number) => `${(v / MAX_STAT) * 100}%`;
 
 function render(): void {
-  const primary = dex[Number(primarySelect.value)];
-  const secondary = dex[Number(secondarySelect.value)];
+  const primary = dex[primaryBox.index];
+  const secondary = dex[secondaryBox.index];
   if (!primary || !secondary) return;
   const f = fuse(primary, secondary);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[Number(natureSelect.value)], i)));
+  const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i)));
 
   const rows = STAT_NAMES.map((name, i) => {
     const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
@@ -91,11 +94,9 @@ async function init(): Promise<void> {
     return;
   }
   dex.sort((a, b) => a.name.localeCompare(b.name));
-  const opts = dex.map((p, i) => `<option value="${i}">${p.name}</option>`).join("");
-  primarySelect.innerHTML = secondarySelect.innerHTML = opts;
-  primarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Charizard")));
-  secondarySelect.value = String(Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
-  primarySelect.onchange = secondarySelect.onchange = render;
+  const dexChoices: Choice[] = dex.map(p => ({ label: p.name, text: normalize(`${p.name} ${p.types.join(" ")}`) }));
+  primaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Charizard")));
+  secondaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
   for (const input of ivInputs) {
     input.oninput = render;
     input.onchange = () => {
@@ -103,14 +104,16 @@ async function init(): Promise<void> {
       render();
     };
   }
-  natureSelect.onchange = render;
   levelInput.oninput = render;
   levelInput.onchange = () => {
     levelInput.value = String(clampLevel(Number(levelInput.value)));
     render();
   };
   el("swap").onclick = () => {
-    [primarySelect.value, secondarySelect.value] = [secondarySelect.value, primarySelect.value];
+    const [a, b] = [primaryBox.index, secondaryBox.index];
+    if (a < 0 || b < 0) return;
+    primaryBox.setIndex(b);
+    secondaryBox.setIndex(a);
     render();
   };
   render();
@@ -118,6 +121,6 @@ async function init(): Promise<void> {
 
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs]) restrictToDigits(input);
-natureSelect.innerHTML = NATURES.map((n, i) => `<option value="${i}">${natureLabel(n)}</option>`).join("");
+natureBox.setChoices(natureChoices, 0);
 
 void init();
