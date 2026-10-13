@@ -7,8 +7,6 @@ export interface Choice {
 export const normalize = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-const escapeHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 /**
  * A single text box that works as both filter and selector: click it to see the full list,
  * type to narrow the list, then click an item or press Enter to choose it.
@@ -87,11 +85,23 @@ export class Combobox {
     const q = normalize(this.query.trim());
     this.matches = [];
     this.choices.forEach((c, i) => { if (c.text.includes(q)) this.matches.push(i); });
-    this.list.innerHTML = this.matches.length
-      ? this.matches
-          .map(i => `<li id="${this.list.id}-opt-${i}" role="option" data-index="${i}" aria-selected="${i === this.selected}">${escapeHtml(this.choices[i]?.label ?? "")}</li>`)
-          .join("")
-      : '<li class="empty" role="presentation">No matches</li>';
+    const items = this.matches.map(i => {
+      const item = document.createElement("li");
+      item.id = `${this.list.id}-opt-${i}`;
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", String(i === this.selected));
+      item.dataset.index = String(i);
+      item.textContent = this.choices[i]?.label ?? "";
+      return item;
+    });
+    if (items.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "empty";
+      empty.setAttribute("role", "presentation");
+      empty.textContent = "No matches";
+      items.push(empty);
+    }
+    this.list.replaceChildren(...items);
     // With no typing, start on the current choice (like a normal dropdown); otherwise the best match.
     this.active = this.matches.length === 0 ? -1 : q === "" ? Math.max(0, this.matches.indexOf(this.selected)) : 0;
     if (!this.list.hidden) this.setActive(this.active);

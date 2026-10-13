@@ -6,6 +6,7 @@
     "lib": ["ES2020", "DOM"],
     "rootDir": "src",
     "outDir": "dist",
+    "newLine": "lf",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true
