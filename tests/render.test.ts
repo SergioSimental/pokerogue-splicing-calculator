@@ -7,9 +7,11 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 // A name full of characters that would break or inject markup if it were ever treated as HTML.
 const HOSTILE = `<img src=x onerror="alert(1)"> & <script>alert(2)</script> "quoted" 'single'`;
 
+const HOSTILE_PASSIVE = `Passive <b>A</b> & <img src=x>`;
+
 const dex = [
-  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"] },
-  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"] },
+  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE },
+  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B" },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
@@ -30,6 +32,13 @@ beforeAll(async () => {
   primary.value = "img";
   primary.dispatchEvent(new Event("input", { bubbles: true }));
   primary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+
+  // And the other entry as the secondary Pokémon.
+  const secondary = $("#secondary") as HTMLInputElement;
+  secondary.dispatchEvent(new Event("focus"));
+  secondary.value = "safe";
+  secondary.dispatchEvent(new Event("input", { bubbles: true }));
+  secondary.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
 });
 
 describe("results card renders names as plain text", () => {
@@ -67,5 +76,42 @@ describe("results card content", () => {
 
   it("shows a total at the chosen level", () => {
     expect($("#result .total")?.textContent).toMatch(/^Total at Lv 50: [\d,]+$/);
+  });
+});
+
+describe("passive ability", () => {
+  const toggle = () => $("#passive-unlocked") as HTMLInputElement;
+  const setUnlocked = (value: boolean) => {
+    toggle().checked = value;
+    toggle().dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const passiveText = () => $("#result .passive")?.textContent;
+
+  it("is locked by default and shows nothing", () => {
+    expect(toggle().checked).toBe(false);
+    expect($("#result .passive")).toBeNull();
+  });
+
+  it("shows the primary Pokémon's passive once unlocked, never the secondary's", () => {
+    setUnlocked(true);
+    expect(passiveText()).toBe(`Passive: ${HOSTILE_PASSIVE}`);
+    expect(passiveText()).not.toContain("Passive B");
+  });
+
+  it("shows the passive as plain text, never as HTML", () => {
+    expect($("#result .passive")?.querySelectorAll("b")).toHaveLength(1); // only the bold "Passive:" label
+    expect($("#result .passive img")).toBeNull();
+  });
+
+  it("follows the primary Pokémon when the two are swapped", () => {
+    ($("#swap") as HTMLButtonElement).click();
+    expect(passiveText()).toBe("Passive: Passive B");
+    ($("#swap") as HTMLButtonElement).click();
+    expect(passiveText()).toBe(`Passive: ${HOSTILE_PASSIVE}`);
+  });
+
+  it("disappears again when locked", () => {
+    setUnlocked(false);
+    expect($("#result .passive")).toBeNull();
   });
 });

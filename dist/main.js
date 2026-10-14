@@ -21,6 +21,7 @@ const primaryBox = new Combobox(el("primary"), el("primary-list"), render);
 const secondaryBox = new Combobox(el("secondary"), el("secondary-list"), render);
 const natureBox = new Combobox(el("nature"), el("nature-list"), render);
 const levelInput = el("level");
+const passiveToggle = el("passive-unlocked");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
 const result = el("result");
 const fmt = (n) => n.toLocaleString("en-US");
@@ -93,12 +94,15 @@ function render() {
         chip.style.background = COLORS[t];
         types.append(chip);
     }
+    // A fused Pokémon uses the passive of its primary (first) Pokémon, once that passive is unlocked.
+    const passiveLine = h("div", "passive");
+    passiveLine.append(h("b", undefined, "Passive: "), primary.passive);
     const labels = h("div", "stat labels");
     labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
     const legend = h("div", "legend");
     legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
     // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
-    result.replaceChildren(h("h2", undefined, `${primary.name} + ${secondary.name}`), types, labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
+    result.replaceChildren(h("h2", undefined, `${primary.name} + ${secondary.name}`), types, ...(passiveToggle.checked ? [passiveLine] : []), labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
 }
 async function init() {
     try {
@@ -140,5 +144,6 @@ async function init() {
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs])
     restrictToDigits(input);
+passiveToggle.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);
 void init();
