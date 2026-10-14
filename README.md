@@ -14,7 +14,7 @@ Browsers block `fetch` on `file://`, so always use the local server. Use `npm ru
 ```bash
 npm test
 ```
-Unit tests (Vitest) cover the fusion rules, level and IV math, natures, and the shape of `data/pokemon.json`. They live in the `tests/` folder and are not part of the browser build. A GitHub Actions workflow (`.github/workflows/test.yml`) runs them on every push and also checks that the committed `dist/` matches `src/`.
+Tests (Vitest) cover the fusion rules, level and IV math, natures, the shape of `data/pokemon.json`, the searchable dropdown's keyboard and mouse behavior, and that Pokémon names are always shown as plain text and never parsed as HTML. The UI tests run in a simulated browser (jsdom). They live in the `tests/` folder and are not part of the browser build. A GitHub Actions workflow (`.github/workflows/test.yml`) runs them on every push and also checks that the committed `dist/` matches `src/`.
 
 ## Deploy
 The compiled `dist/` folder is committed, so no CI is needed. Run `npm run build` before pushing, then enable **Settings > Pages > Deploy from branch > main / root**.
