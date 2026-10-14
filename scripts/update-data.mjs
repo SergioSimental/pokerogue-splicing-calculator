@@ -3,22 +3,32 @@
  * Regenerates data/pokemon.json from PokeRogue's source code.
  *
  * Reads src/data/balance/species/generation-NN.ts from the upstream repo,
- * pulls out each species' types and base stats (plus alternate forms whose
- * types or stats differ from the base species), and writes the result.
+ * pulls out each species' types, base stats and passive ability (plus alternate forms
+ * whose types, stats or passive differ from the base species), and writes the result.
+ * Ability display names come from PokeRogue's English locale file.
  *
  * Usage:   node scripts/update-data.mjs
- * Options: POKEROGUE_REF=<branch|tag|sha>   which upstream ref to read (default: main)
+ * Options: POKEROGUE_REF=<branch|tag|sha>          which upstream ref to read (default: main)
+ *          POKEROGUE_LOCALE_REF=<branch|tag|sha>   which ref of the locales repo to read (default: main)
  *
  * Needs Node 18+ (built-in fetch). The output file is only replaced when every
  * sanity check passes, so a failed run never leaves bad data behind.
  */
+import dns from "node:dns";
 import { readFile, writeFile } from "node:fs/promises";
+import net from "node:net";
 import { fileURLToPath } from "node:url";
+
+// Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
+// Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
+dns.setDefaultResultOrder("ipv4first");
+net.setDefaultAutoSelectFamily(false);
 
 const REPO = "pagefaultgames/pokerogue";
 const REF = process.env.POKEROGUE_REF || "main";
 const BASE_URL = `https://raw.githubusercontent.com/${REPO}/${REF}/src/data/balance/species`;
 const OUTPUT = fileURLToPath(new URL("../data/pokemon.json", import.meta.url));
+const LOCALE_URL = `https://raw.githubusercontent.com/pagefaultgames/pokerogue-locales/${process.env.POKEROGUE_LOCALE_REF || "main"}/en/ability.json`;
 const MAX_GENERATIONS = 20; // stops at the first missing file, so new generations are picked up automatically
 const MIN_ENTRIES = 1000; // guard against upstream restructuring the files
 
@@ -49,12 +59,39 @@ function displayName(id) {
   return id.split("_").map(capitalize).join(" ");
 }
 
+const FETCH_ATTEMPTS = 3;
+const FETCH_TIMEOUT_MS = 30_000;
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+/** Node reports every network failure as just "fetch failed"; the useful part is in err.cause. */
+function describeError(err) {
+  const cause = err?.cause?.code ?? err?.cause?.message ?? err?.name;
+  return cause && cause !== err.message ? `${err.message} (${cause})` : String(err?.message ?? err);
+}
+
+/**
+ * Downloads a text file. Returns null for a 404. Retries a few times on network errors,
+ * timeouts, rate limiting (429) and server errors (5xx); other HTTP errors fail immediately.
+ */
 async function fetchText(url) {
   const headers = process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {};
-  const res = await fetch(url, { headers });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`GET ${url} failed: ${res.status} ${res.statusText}`);
-  return res.text();
+  let lastError;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+      if (res.status === 404) return null;
+      if (res.ok) return await res.text();
+      lastError = new Error(`HTTP ${res.status} ${res.statusText}`);
+      if (res.status < 500 && res.status !== 429) break; // retrying will not help
+    } catch (err) {
+      lastError = err;
+    }
+    if (attempt < FETCH_ATTEMPTS) {
+      console.warn(`  ${describeError(lastError)}; retrying (${attempt}/${FETCH_ATTEMPTS - 1})...`);
+      await sleep(attempt * 1000);
+    }
+  }
+  throw new Error(`Could not download ${url}: ${describeError(lastError)}. Check your internet connection, VPN or firewall, then try again.`);
 }
 
 async function loadGenerations() {
@@ -98,6 +135,42 @@ function readEntry(block, label) {
   return { stats, types: type2 ? [type1, type2] : [type1] };
 }
 
+/** Official English ability names, keyed like "speedBoost". Falls back to generated names if unavailable. */
+async function loadAbilityNames() {
+  try {
+    const text = await fetchText(LOCALE_URL);
+    if (text === null) throw new Error("file not found");
+    const names = {};
+    for (const [key, value] of Object.entries(JSON.parse(text))) {
+      if (typeof value?.name === "string") names[key] = value.name;
+    }
+    return names;
+  } catch (err) {
+    console.warn(`Warning: could not load official ability names (${err.message}); using generated names instead.`);
+    return {};
+  }
+}
+
+const camelCase = id => {
+  const [first, ...rest] = id.toLowerCase().split("_");
+  return first + rest.map(capitalize).join("");
+};
+
+/**
+ * Reads a species' passive ability. Upstream stores either one ability for every form,
+ * or an object keyed by form number. A form with no entry uses the base form's passive,
+ * which is the same rule the game applies.
+ */
+function readPassives(segment, id) {
+  const single = segment.match(/\bpassives:\s*AbilityId\.(\w+)/);
+  if (single) return () => single[1];
+  const object = segment.match(/\bpassives:\s*\{([^}]*)\}/);
+  if (!object) throw new Error(`${id}: no passives field found. Did the upstream format change?`);
+  const byForm = new Map([...object[1].matchAll(/(\d+):\s*AbilityId\.(\w+)/g)].map(m => [Number(m[1]), m[2]]));
+  if (!byForm.has(0)) throw new Error(`${id}: passives has no entry for the base form`);
+  return formIndex => byForm.get(formIndex) ?? byForm.get(0);
+}
+
 function parseGeneration(text) {
   const parts = text.split(/generation\w+SpeciesData\[SpeciesId\.(\w+)\]\s*=\s*\{/);
   const entries = [];
@@ -107,32 +180,44 @@ function parseGeneration(text) {
     const firstForm = segment.indexOf("new PokemonForm(");
     const head = firstForm < 0 ? segment : segment.slice(0, firstForm);
     const forms = [...segment.matchAll(/new PokemonForm\(\{([\s\S]*?)\n\s*\}\)/g)].map(m => m[1]);
-    entries.push({ id, head, forms });
+    entries.push({ id, head, forms, segment });
   }
   return entries;
 }
 
-function buildDataset(generations) {
+function buildDataset(generations, abilityNames) {
   const out = [];
+  const generatedNames = new Set();
+  const nameOf = abilityId => {
+    const official = abilityNames[camelCase(abilityId)];
+    if (official) return official;
+    generatedNames.add(abilityId);
+    return abilityId.split("_").map(capitalize).join(" ");
+  };
+
   for (const text of generations) {
-    for (const { id, head, forms } of parseGeneration(text)) {
+    for (const { id, head, forms, segment } of parseGeneration(text)) {
       const baseName = displayName(id);
-      const base = readEntry(head, id);
+      const passiveFor = readPassives(segment, id);
+      const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)) };
       out.push({ name: baseName, ...base });
 
-      // Keep alternate forms only when they differ in types or stats; cosmetic forms
-      // (Unown letters, Vivillon patterns...) would just duplicate the base species.
-      const seen = new Set([JSON.stringify([base.stats, base.types])]);
-      for (const block of forms) {
+      // Keep an alternate form only when its types, stats or passive differ from every earlier
+      // entry of the species. Forms that are identical in all three would just add duplicates.
+      const keyOf = e => JSON.stringify([e.stats, e.types, e.passive]);
+      const seen = new Set([keyOf(base)]);
+      forms.forEach((block, formIndex) => {
         const formLabel = field(block, "formName")?.replace(/^"|"$/g, "")
           || capitalize((field(block, "formKey") ?? "form").split(".").pop());
-        const form = readEntry(block, `${id} (${formLabel})`);
-        const key = JSON.stringify([form.stats, form.types]);
-        if (seen.has(key)) continue;
-        seen.add(key);
+        const form = { ...readEntry(block, `${id} (${formLabel})`), passive: nameOf(passiveFor(formIndex)) };
+        if (seen.has(keyOf(form))) return;
+        seen.add(keyOf(form));
         out.push({ name: `${baseName} (${formLabel})`, ...form });
-      }
+      });
     }
+  }
+  if (generatedNames.size > 0) {
+    console.warn(`Warning: no official name for ${[...generatedNames].join(", ")}; used generated names.`);
   }
   return out;
 }
@@ -145,6 +230,7 @@ function validate(data) {
   for (const e of data) {
     if (names.has(e.name)) throw new Error(`Duplicate name: ${e.name}`);
     names.add(e.name);
+    if (typeof e.passive !== "string" || e.passive === "") throw new Error(`${e.name}: missing passive`);
   }
 }
 
@@ -175,7 +261,7 @@ function summarize(oldData, newData) {
 
 async function main() {
   console.log(`Reading ${REPO}@${REF}`);
-  const data = buildDataset(await loadGenerations());
+  const data = buildDataset(await loadGenerations(), await loadAbilityNames());
   validate(data);
 
   const oldData = await readExisting();
