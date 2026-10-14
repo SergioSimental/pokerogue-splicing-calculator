@@ -10,6 +10,12 @@ npm run serve     # http://localhost:8000
 ```
 Browsers block `fetch` on `file://`, so always use the local server. Use `npm run watch` while developing.
 
+## Tests
+```bash
+npm test
+```
+Tests (Vitest) cover the fusion rules, level and IV math, natures, the shape of `data/pokemon.json`, the searchable dropdown's keyboard and mouse behavior, and that Pokémon names are always shown as plain text and never parsed as HTML. The UI tests run in a simulated browser (jsdom). They live in the `tests/` folder and are not part of the browser build. A GitHub Actions workflow (`.github/workflows/test.yml`) runs them on every push and also checks that the committed `dist/` matches `src/`.
+
 ## Deploy
 The compiled `dist/` folder is committed, so no CI is needed. Run `npm run build` before pushing, then enable **Settings > Pages > Deploy from branch > main / root**.
 
@@ -57,4 +63,4 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 MIT. Pokémon and PokeRogue are property of their respective owners; this is an unofficial fan project.
 
 ## Structure
-`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/main.ts` (UI), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator).
+`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator).

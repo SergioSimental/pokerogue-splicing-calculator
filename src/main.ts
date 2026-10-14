@@ -57,6 +57,21 @@ function restrictToDigits(input: HTMLInputElement): void {
 
 const pct = (v: number) => `${(v / MAX_STAT) * 100}%`;
 
+/** Creates an element whose text is set with textContent (never parsed as HTML). */
+function h<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function marker(className: string, title: string, position: string): HTMLSpanElement {
+  const node = h("span", className);
+  node.title = title;
+  node.style.setProperty("--pos", position);
+  return node;
+}
+
 function render(): void {
   const primary = dex[primaryBox.index];
   const secondary = dex[secondaryBox.index];
@@ -68,20 +83,35 @@ function render(): void {
 
   const rows = STAT_NAMES.map((name, i) => {
     const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
-    return `<div class="stat"><span>${name}</span>
-      <div class="track"><div class="fill" style="width:${pct(v)}"></div>
-        <span class="tick p" title="${primary.name}: ${p}" style="left:calc(${pct(p)} - 2px)"></span>
-        <span class="tick s" title="${secondary.name}: ${s}" style="left:calc(${pct(s)} - 2px)"></span>
-      </div><span class="lvl">${fmt(atLevel[i] ?? 0)}</span></div>`;
-  }).join("");
+    const fill = h("div", "fill");
+    fill.style.setProperty("--pos", pct(v));
+    const track = h("div", "track");
+    track.append(fill, marker("tick p", `${primary.name}: ${p}`, pct(p)), marker("tick s", `${secondary.name}: ${s}`, pct(s)));
+    const row = h("div", "stat");
+    row.append(h("span", undefined, name), track, h("span", "lvl", fmt(atLevel[i] ?? 0)));
+    return row;
+  });
 
-  const levelTotal = atLevel.reduce((a, b) => a + b, 0);
-  const chips = f.types.map(t => `<span class="type" style="background:${COLORS[t]}">${t}</span>`).join("");
-  result.innerHTML = `<h2>${primary.name} + ${secondary.name}</h2>
-    <div class="types">${chips}</div>
-    <div class="stat labels"><span></span><span></span><span class="lvl">Lv ${fmt(level)}</span></div>${rows}
-    <div class="total">Total at Lv ${fmt(level)}: ${fmt(levelTotal)}</div>
-    <div class="legend">Markers show the <b>primary</b> and <b>secondary</b> values.</div>`;
+  const types = h("div", "types");
+  for (const t of f.types) {
+    const chip = h("span", "type", t);
+    chip.style.background = COLORS[t];
+    types.append(chip);
+  }
+  const labels = h("div", "stat labels");
+  labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
+  const legend = h("div", "legend");
+  legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
+
+  // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
+  result.replaceChildren(
+    h("h2", undefined, `${primary.name} + ${secondary.name}`),
+    types,
+    labels,
+    ...rows,
+    h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`),
+    legend,
+  );
 }
 
 async function init(): Promise<void> {
