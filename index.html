@@ -46,6 +46,13 @@
     </div>
   </section>
 
+  <section class="passiverow">
+    <label class="check">
+      <input id="passive-unlocked" type="checkbox">
+      Passive ability unlocked (shows the primary Pokémon's passive)
+    </label>
+  </section>
+
   <section class="ivrow">
     <fieldset>
       <legend>IVs of the primary Pokémon (0 to 31)</legend>
@@ -60,7 +67,7 @@
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The passive ability is the primary Pokémon's.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>

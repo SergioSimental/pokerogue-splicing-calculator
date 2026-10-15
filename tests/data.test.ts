@@ -34,6 +34,19 @@ describe("data/pokemon.json", () => {
     }
   });
 
+  // Only the format is checked here, not specific abilities: passives are game-balance
+  // choices that PokeRogue changes over time, so pinning them would fail after a legitimate update.
+  it("has a passive ability for every entry", () => {
+    for (const p of dex) {
+      expect(typeof p.passive, p.name).toBe("string");
+      expect(p.passive.trim(), p.name).not.toBe("");
+    }
+  });
+
+  it("uses a wide variety of passives", () => {
+    expect(new Set(dex.map(p => p.passive)).size).toBeGreaterThan(100);
+  });
+
   it("has the right numbers for well-known Pokémon", () => {
     const find = (name: string) => dex.find(p => p.name === name);
     expect(find("Garchomp")).toMatchObject({ stats: [108, 130, 95, 80, 85, 102], types: ["Dragon", "Ground"] });
