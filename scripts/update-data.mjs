@@ -3,8 +3,9 @@
  * Regenerates data/pokemon.json from PokeRogue's source code.
  *
  * Reads src/data/balance/species/generation-NN.ts from the upstream repo,
- * pulls out each species' types, base stats and passive ability (plus alternate forms
- * whose types, stats or passive differ from the base species), and writes the result.
+ * pulls out each species' types, base stats, regular and hidden abilities and passive
+ * ability (plus alternate forms whose types, stats or passive differ from the base
+ * species), and writes the result.
  * Ability display names come from PokeRogue's English locale file.
  *
  * Usage:   node scripts/update-data.mjs
@@ -157,6 +158,25 @@ const camelCase = id => {
 };
 
 /**
+ * Reads the regular and hidden abilities from one species/form block. Upstream lists
+ * ability1, ability2 and abilityHidden on every block, using AbilityId.NONE for an empty slot.
+ * Returns { regular: [1-2 distinct names], hidden: name | null }.
+ */
+function readAbilities(block, label, nameOf) {
+  const idOf = key => {
+    const m = block.match(new RegExp(`\\b${key}:\\s*AbilityId\\.(\\w+)`));
+    if (!m) throw new Error(`${label}: no ${key} found. Did the upstream format change?`);
+    return m[1];
+  };
+  const regularIds = [];
+  for (const id of [idOf("ability1"), idOf("ability2")]) {
+    if (id !== "NONE" && !regularIds.includes(id)) regularIds.push(id);
+  }
+  const hiddenId = idOf("abilityHidden");
+  return { regular: regularIds.map(nameOf), hidden: hiddenId === "NONE" ? null : nameOf(hiddenId) };
+}
+
+/**
  * Reads a species' passive ability. Upstream stores either one ability for every form,
  * or an object keyed by form number. A form with no entry uses the base form's passive,
  * which is the same rule the game applies.
@@ -199,7 +219,7 @@ function buildDataset(generations, abilityNames) {
     for (const { id, head, forms, segment } of parseGeneration(text)) {
       const baseName = displayName(id);
       const passiveFor = readPassives(segment, id);
-      const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)) };
+      const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)), abilities: readAbilities(head, id, nameOf) };
       out.push({ name: baseName, ...base });
 
       // Keep an alternate form only when its types, stats or passive differ from every earlier
@@ -209,7 +229,12 @@ function buildDataset(generations, abilityNames) {
       forms.forEach((block, formIndex) => {
         const formLabel = field(block, "formName")?.replace(/^"|"$/g, "")
           || capitalize((field(block, "formKey") ?? "form").split(".").pop());
-        const form = { ...readEntry(block, `${id} (${formLabel})`), passive: nameOf(passiveFor(formIndex)) };
+        const formId = `${id} (${formLabel})`;
+        const form = {
+          ...readEntry(block, formId),
+          passive: nameOf(passiveFor(formIndex)),
+          abilities: readAbilities(block, formId, nameOf),
+        };
         if (seen.has(keyOf(form))) return;
         seen.add(keyOf(form));
         out.push({ name: `${baseName} (${formLabel})`, ...form });
@@ -231,6 +256,11 @@ function validate(data) {
     if (names.has(e.name)) throw new Error(`Duplicate name: ${e.name}`);
     names.add(e.name);
     if (typeof e.passive !== "string" || e.passive === "") throw new Error(`${e.name}: missing passive`);
+    const { regular, hidden } = e.abilities ?? {};
+    if (!Array.isArray(regular) || regular.length < 1 || regular.length > 2 || regular.some(a => typeof a !== "string" || a === "")) {
+      throw new Error(`${e.name}: needs one or two regular abilities`);
+    }
+    if (hidden !== null && (typeof hidden !== "string" || hidden === "")) throw new Error(`${e.name}: invalid hidden ability`);
   }
 }
 

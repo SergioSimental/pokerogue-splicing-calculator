@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { clampIv, clampLevel, fuse, MAX_LEVEL, statAtLevel } from "../src/fuse.js";
 import type { Pokemon } from "../src/types.js";
 
-const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"] = [50, 50, 50, 50, 50, 50]): Pokemon => ({ name, types, stats, passive: "Test Ability" });
+const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"] = [50, 50, 50, 50, 50, 50]): Pokemon => ({ name, types, stats, passive: "Test Ability", abilities: { regular: ["Test Ability"], hidden: null } });
 
 describe("fuse: stats", () => {
   it("averages each stat", () => {

@@ -38,9 +38,10 @@ The 25 natures and their order match PokeRogue's `src/data/nature.ts`.
 `data/pokemon.json` holds every species defined in PokeRogue's source (1,084), plus 279 alternate forms (Mega, G-Max, Primal, Unown letters, and others), for 1,363 entries in total. Regional variants such as Alolan and Galarian forms are separate species. It was extracted from `src/data/balance/species/generation-01.ts` through `generation-09.ts` in [pagefaultgames/pokerogue](https://github.com/pagefaultgames/pokerogue) (AGPL-3.0). Alternate forms are listed as `Species (Form)`, and a form is skipped only when its types, base stats and passive are all identical to an earlier entry for the same species (for example Vivillon patterns).
 
 ```json
-{ "name": "Garchomp", "stats": [108,130,95,80,85,102], "types": ["Dragon","Ground"], "passive": "Arena Trap" }
+{ "name": "Garchomp", "stats": [108,130,95,80,85,102], "types": ["Dragon","Ground"], "passive": "Arena Trap",
+  "abilities": { "regular": ["Sand Veil"], "hidden": "Rough Skin" } }
 ```
-Stats are in order HP, Atk, Def, SpA, SpD, Spe. `passive` is the passive ability PokeRogue gives that species or form; its display name comes from PokeRogue's English locale file ([pagefaultgames/pokerogue-locales](https://github.com/pagefaultgames/pokerogue-locales)). Display names are generated from the game's species IDs, so a few may differ slightly from in-game spelling.
+Stats are in order HP, Atk, Def, SpA, SpD, Spe. `passive` is the passive ability PokeRogue gives that species or form. `abilities.regular` lists its one or two regular abilities (an empty second slot is left out) and `abilities.hidden` its hidden ability, or `null` when it has none; for a few species the hidden ability repeats a regular one, as in the game's data. All ability names come from PokeRogue's English locale file ([pagefaultgames/pokerogue-locales](https://github.com/pagefaultgames/pokerogue-locales)). Display names are generated from the game's species IDs, so a few may differ slightly from in-game spelling.
 
 ## Passive ability
 Tick **Passive ability unlocked** to show the passive of the fused Pokémon. In PokeRogue a fusion uses the passive of its primary (first) Pokémon, so the secondary Pokémon's passive is never shown. Passives are read from `data/pokemon.json`.
