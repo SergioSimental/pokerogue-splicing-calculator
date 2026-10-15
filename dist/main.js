@@ -1,3 +1,4 @@
+import { abilityChoices } from "./abilities.js";
 import { Combobox, normalize } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
@@ -22,6 +23,7 @@ const secondaryBox = new Combobox(el("secondary"), el("secondary-list"), render)
 const natureBox = new Combobox(el("nature"), el("nature-list"), render);
 const levelInput = el("level");
 const passiveToggle = el("passive-unlocked");
+const abilitySelect = el("ability");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
 const result = el("result");
 const fmt = (n) => n.toLocaleString("en-US");
@@ -69,11 +71,28 @@ function marker(className, title, position) {
     node.style.setProperty("--pos", position);
     return node;
 }
+// The ability list belongs to the secondary Pokémon, so it is rebuilt (and reset to the first
+// ability) only when the secondary Pokémon changes, not on every re-render.
+let abilityListFor = -1;
+let abilityList = [];
+function syncAbilityOptions(secondary) {
+    if (abilityListFor === secondaryBox.index)
+        return;
+    abilityListFor = secondaryBox.index;
+    abilityList = abilityChoices(secondary);
+    abilitySelect.replaceChildren(...abilityList.map((choice, i) => {
+        const option = h("option", undefined, choice.label);
+        option.value = String(i);
+        return option;
+    }));
+    abilitySelect.disabled = abilityList.length === 0;
+}
 function render() {
     const primary = dex[primaryBox.index];
     const secondary = dex[secondaryBox.index];
     if (!primary || !secondary)
         return;
+    syncAbilityOptions(secondary);
     const f = fuse(primary, secondary);
     const level = clampLevel(Number(levelInput.value));
     const ivs = ivInputs.map(input => clampIv(Number(input.value)));
@@ -94,15 +113,21 @@ function render() {
         chip.style.background = COLORS[t];
         types.append(chip);
     }
-    // A fused Pokémon uses the passive of its primary (first) Pokémon, once that passive is unlocked.
+    // A fused Pokémon takes its ability from its secondary Pokémon (the one the user picked above)...
+    const chosenAbility = abilityList[Number(abilitySelect.value)] ?? abilityList[0];
+    const abilityLine = h("div", "ability");
+    abilityLine.append(h("b", undefined, "Ability: "), chosenAbility?.label ?? "None");
+    // ...and the passive of its primary (first) Pokémon, once that passive is unlocked.
     const passiveLine = h("div", "passive");
     passiveLine.append(h("b", undefined, "Passive: "), primary.passive);
+    const abilities = h("div", "abilities");
+    abilities.append(abilityLine, ...(passiveToggle.checked ? [passiveLine] : []));
     const labels = h("div", "stat labels");
     labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
     const legend = h("div", "legend");
     legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
     // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
-    result.replaceChildren(h("h2", undefined, `${primary.name} + ${secondary.name}`), types, ...(passiveToggle.checked ? [passiveLine] : []), labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
+    result.replaceChildren(h("h2", undefined, `${primary.name} + ${secondary.name}`), types, abilities, labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
 }
 async function init() {
     try {
@@ -145,5 +170,6 @@ async function init() {
 for (const input of [levelInput, ...ivInputs])
     restrictToDigits(input);
 passiveToggle.addEventListener("change", render);
+abilitySelect.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);
 void init();

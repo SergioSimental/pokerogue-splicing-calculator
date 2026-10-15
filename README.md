@@ -43,6 +43,9 @@ The 25 natures and their order match PokeRogue's `src/data/nature.ts`.
 ```
 Stats are in order HP, Atk, Def, SpA, SpD, Spe. `passive` is the passive ability PokeRogue gives that species or form. `abilities.regular` lists its one or two regular abilities (an empty second slot is left out) and `abilities.hidden` its hidden ability, or `null` when it has none; for a few species the hidden ability repeats a regular one, as in the game's data. All ability names come from PokeRogue's English locale file ([pagefaultgames/pokerogue-locales](https://github.com/pagefaultgames/pokerogue-locales)). Display names are generated from the game's species IDs, so a few may differ slightly from in-game spelling.
 
+## Ability
+A fused Pokémon takes its **ability** from its secondary (fused) Pokémon (in PokeRogue's source, a fusion uses the fusion species' ability slot). Pick it in the **Ability of the fused Pokémon** box under the pickers: it lists the secondary Pokémon's regular abilities and its hidden ability (marked "Hidden"; left out when it only repeats a regular ability). The chosen ability appears on the fused Pokémon's card. The list resets to the first ability whenever the secondary Pokémon changes.
+
 ## Passive ability
 Tick **Passive ability unlocked** to show the passive of the fused Pokémon. In PokeRogue a fusion uses the passive of its primary (first) Pokémon, so the secondary Pokémon's passive is never shown. Passives are read from `data/pokemon.json`.
 
@@ -60,11 +63,10 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Full Pokédex data (e.g. generated from PokeAPI)
-- Show each Pokémon's passive in the results, and add the regular ability pools
 - Search and filters, shareable links
 
 ## License
 MIT. Pokémon and PokeRogue are property of their respective owners; this is an unofficial fan project.
 
 ## Structure
-`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator).
+`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/abilities.ts` (which abilities a fusion can take), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator).
