@@ -8,10 +8,11 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 const HOSTILE = `<img src=x onerror="alert(1)"> & <script>alert(2)</script> "quoted" 'single'`;
 
 const HOSTILE_PASSIVE = `Passive <b>A</b> & <img src=x>`;
+const HOSTILE_ABILITY = `Ability <i>A</i> & <img src=x>`;
 
 const dex = [
-  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE },
-  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B" },
+  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null } },
+  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" } },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
@@ -113,5 +114,71 @@ describe("passive ability", () => {
   it("disappears again when locked", () => {
     setUnlocked(false);
     expect($("#result .passive")).toBeNull();
+  });
+});
+
+describe("fused ability (taken from the secondary Pokémon)", () => {
+  const select = () => $("#ability") as HTMLSelectElement;
+  const options = () => [...select().options].map(o => o.textContent);
+  const abilityText = () => $("#result .ability")?.textContent;
+  const choose = (value: string) => {
+    select().value = value;
+    select().dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const swap = () => ($("#swap") as HTMLButtonElement).click();
+
+  it("offers the secondary Pokémon's regular and hidden abilities", () => {
+    expect(select().disabled).toBe(false);
+    expect(options()).toEqual(["Ability B", "Ability C", "Hidden B (Hidden)"]);
+  });
+
+  it("starts on the first ability and shows it on the fused Pokémon", () => {
+    expect(abilityText()).toBe("Ability: Ability B");
+  });
+
+  it("shows whichever ability the user picks, including the hidden one", () => {
+    choose("1");
+    expect(abilityText()).toBe("Ability: Ability C");
+    choose("2");
+    expect(abilityText()).toBe("Ability: Hidden B (Hidden)");
+  });
+
+  it("keeps the choice when other inputs change", () => {
+    const level = $("#level") as HTMLInputElement;
+    level.value = "70";
+    level.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(select().value).toBe("2");
+    expect(abilityText()).toBe("Ability: Hidden B (Hidden)");
+  });
+
+  it("is shown whether or not the passive is unlocked, and next to it when it is", () => {
+    expect($("#result .passive")).toBeNull();
+    const toggle = $("#passive-unlocked") as HTMLInputElement;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+    expect(abilityText()).toBe("Ability: Hidden B (Hidden)");
+    expect($("#result .passive")?.textContent).toBe(`Passive: ${HOSTILE_PASSIVE}`);
+    toggle.checked = false;
+    toggle.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  it("switches to the new secondary Pokémon's abilities when swapped, never the old one's", () => {
+    swap();
+    expect(options()).toEqual([HOSTILE_ABILITY]);
+    expect(abilityText()).toBe(`Ability: ${HOSTILE_ABILITY}`);
+    expect(abilityText()).not.toContain("Ability B");
+  });
+
+  it("shows ability names as plain text, never as HTML", () => {
+    expect($("#result .ability")?.querySelectorAll("b")).toHaveLength(1); // only the bold "Ability:" label
+    expect($("#result .ability i, #result .ability img")).toBeNull();
+    expect(select().querySelector("option i, option img")).toBeNull();
+  });
+
+  it("resets to the first ability after swapping back", () => {
+    swap();
+    expect(options()).toEqual(["Ability B", "Ability C", "Hidden B (Hidden)"]);
+    expect(select().value).toBe("0");
+    expect(abilityText()).toBe("Ability: Ability B");
   });
 });

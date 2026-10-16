@@ -30,6 +30,12 @@
     </div>
   </section>
 
+  <section class="abilityrow">
+    <label class="ability-pick">Ability of the fused Pokémon (from the secondary Pokémon)
+      <select id="ability" disabled></select>
+    </label>
+  </section>
+
   <section class="levelrow">
     <label class="level">Level of the primary Pokémon (1 or higher)
       <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
@@ -67,7 +73,7 @@
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The passive ability is the primary Pokémon's.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's.</p>
 </main>
 <script type="module" src="dist/main.js"></script>
 </body>

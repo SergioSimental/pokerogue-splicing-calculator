@@ -1,3 +1,4 @@
+import { abilityChoices, type AbilityChoice } from "./abilities.js";
 import { Combobox, normalize, type Choice } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
@@ -24,6 +25,7 @@ const secondaryBox = new Combobox(el<HTMLInputElement>("secondary"), el<HTMLULis
 const natureBox = new Combobox(el<HTMLInputElement>("nature"), el<HTMLUListElement>("nature-list"), render);
 const levelInput = el<HTMLInputElement>("level");
 const passiveToggle = el<HTMLInputElement>("passive-unlocked");
+const abilitySelect = el<HTMLSelectElement>("ability");
 const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
 const result = el<HTMLElement>("result");
 
@@ -73,10 +75,31 @@ function marker(className: string, title: string, position: string): HTMLSpanEle
   return node;
 }
 
+// The ability list belongs to the secondary Pokémon, so it is rebuilt (and reset to the first
+// ability) only when the secondary Pokémon changes, not on every re-render.
+let abilityListFor = -1;
+let abilityList: AbilityChoice[] = [];
+
+function syncAbilityOptions(secondary: Pokemon): void {
+  if (abilityListFor === secondaryBox.index) return;
+  abilityListFor = secondaryBox.index;
+  abilityList = abilityChoices(secondary);
+  abilitySelect.replaceChildren(
+    ...abilityList.map((choice, i) => {
+      const option = h("option", undefined, choice.label);
+      option.value = String(i);
+      return option;
+    }),
+  );
+  abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
+  abilitySelect.disabled = abilityList.length === 0;
+}
+
 function render(): void {
   const primary = dex[primaryBox.index];
   const secondary = dex[secondaryBox.index];
   if (!primary || !secondary) return;
+  syncAbilityOptions(secondary);
   const f = fuse(primary, secondary);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
@@ -99,9 +122,15 @@ function render(): void {
     chip.style.background = COLORS[t];
     types.append(chip);
   }
-  // A fused Pokémon uses the passive of its primary (first) Pokémon, once that passive is unlocked.
+  // A fused Pokémon takes its ability from its secondary Pokémon (the one the user picked above)...
+  const chosenAbility = abilityList[Number(abilitySelect.value)] ?? abilityList[0];
+  const abilityLine = h("div", "ability");
+  abilityLine.append(h("b", undefined, "Ability: "), chosenAbility?.label ?? "None");
+  // ...and the passive of its primary (first) Pokémon, once that passive is unlocked.
   const passiveLine = h("div", "passive");
   passiveLine.append(h("b", undefined, "Passive: "), primary.passive);
+  const abilities = h("div", "abilities");
+  abilities.append(abilityLine, ...(passiveToggle.checked ? [passiveLine] : []));
   const labels = h("div", "stat labels");
   labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
   const legend = h("div", "legend");
@@ -111,7 +140,7 @@ function render(): void {
   result.replaceChildren(
     h("h2", undefined, `${primary.name} + ${secondary.name}`),
     types,
-    ...(passiveToggle.checked ? [passiveLine] : []),
+    abilities,
     labels,
     ...rows,
     h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`),
@@ -157,6 +186,7 @@ async function init(): Promise<void> {
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs]) restrictToDigits(input);
 passiveToggle.addEventListener("change", render);
+abilitySelect.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);
 
 void init();

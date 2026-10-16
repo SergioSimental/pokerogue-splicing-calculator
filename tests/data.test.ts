@@ -47,6 +47,31 @@ describe("data/pokemon.json", () => {
     expect(new Set(dex.map(p => p.passive)).size).toBeGreaterThan(100);
   });
 
+  // Format only, for the same reason as the passives above.
+  it("has one or two distinct regular abilities for every entry", () => {
+    for (const p of dex) {
+      const { regular } = p.abilities;
+      expect(Array.isArray(regular), p.name).toBe(true);
+      expect(regular.length, p.name).toBeGreaterThanOrEqual(1);
+      expect(regular.length, p.name).toBeLessThanOrEqual(2);
+      for (const a of regular) expect(typeof a === "string" && a.trim() !== "", `${p.name}: "${a}"`).toBe(true);
+      expect(new Set(regular).size, p.name).toBe(regular.length);
+    }
+  });
+
+  it("has a hidden ability that is either a name or null", () => {
+    for (const p of dex) {
+      const { hidden } = p.abilities;
+      expect(hidden === null || (typeof hidden === "string" && hidden.trim() !== ""), `${p.name}: ${hidden}`).toBe(true);
+    }
+  });
+
+  it("uses official-looking ability names, not raw IDs", () => {
+    const names = dex.flatMap(p => [...p.abilities.regular, p.abilities.hidden ?? p.passive, p.passive]);
+    for (const n of names) expect(/^[A-Z]+(_[A-Z]+)+$/.test(n), n).toBe(false);
+    expect(new Set(names).size).toBeGreaterThan(150);
+  });
+
   it("has the right numbers for well-known Pokémon", () => {
     const find = (name: string) => dex.find(p => p.name === name);
     expect(find("Garchomp")).toMatchObject({ stats: [108, 130, 95, 80, 85, 102], types: ["Dragon", "Ground"] });

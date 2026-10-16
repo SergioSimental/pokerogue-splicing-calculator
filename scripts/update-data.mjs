@@ -3,8 +3,9 @@
  * Regenerates data/pokemon.json from PokeRogue's source code.
  *
  * Reads src/data/balance/species/generation-NN.ts from the upstream repo,
- * pulls out each species' types, base stats and passive ability (plus alternate forms
- * whose types, stats or passive differ from the base species), and writes the result.
+ * pulls out each species' types, base stats, regular and hidden abilities and passive
+ * ability (plus alternate forms whose types, stats or passive differ from the base
+ * species), and writes the result.
  * Ability display names come from PokeRogue's English locale file.
  *
  * Usage:   node scripts/update-data.mjs
@@ -18,6 +19,7 @@ import dns from "node:dns";
 import { readFile, writeFile } from "node:fs/promises";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
+import { readAbilities } from "./abilities-parser.mjs";
 
 // Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
 // Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
@@ -31,6 +33,11 @@ const OUTPUT = fileURLToPath(new URL("../data/pokemon.json", import.meta.url));
 const LOCALE_URL = `https://raw.githubusercontent.com/pagefaultgames/pokerogue-locales/${process.env.POKEROGUE_LOCALE_REF || "main"}/en/ability.json`;
 const MAX_GENERATIONS = 20; // stops at the first missing file, so new generations are picked up automatically
 const MIN_ENTRIES = 1000; // guard against upstream restructuring the files
+// Ability sanity checks. Today about 79% of entries have a hidden ability and 43% have two regular
+// abilities; these floors sit far below that, so a rebalance passes but a parse that quietly loses
+// a whole ability slot (every entry suddenly "has none") fails the run instead of being written out.
+const MIN_HIDDEN_SHARE = 0.4;
+const MIN_TWO_REGULAR_SHARE = 0.15;
 
 const TYPES = new Set([
   "Normal", "Fire", "Water", "Electric", "Grass", "Ice", "Fighting", "Poison", "Ground",
@@ -199,7 +206,7 @@ function buildDataset(generations, abilityNames) {
     for (const { id, head, forms, segment } of parseGeneration(text)) {
       const baseName = displayName(id);
       const passiveFor = readPassives(segment, id);
-      const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)) };
+      const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)), abilities: readAbilities(head, id, nameOf) };
       out.push({ name: baseName, ...base });
 
       // Keep an alternate form only when its types, stats or passive differ from every earlier
@@ -209,7 +216,12 @@ function buildDataset(generations, abilityNames) {
       forms.forEach((block, formIndex) => {
         const formLabel = field(block, "formName")?.replace(/^"|"$/g, "")
           || capitalize((field(block, "formKey") ?? "form").split(".").pop());
-        const form = { ...readEntry(block, `${id} (${formLabel})`), passive: nameOf(passiveFor(formIndex)) };
+        const formId = `${id} (${formLabel})`;
+        const form = {
+          ...readEntry(block, formId),
+          passive: nameOf(passiveFor(formIndex)),
+          abilities: readAbilities(block, formId, nameOf),
+        };
         if (seen.has(keyOf(form))) return;
         seen.add(keyOf(form));
         out.push({ name: `${baseName} (${formLabel})`, ...form });
@@ -231,6 +243,18 @@ function validate(data) {
     if (names.has(e.name)) throw new Error(`Duplicate name: ${e.name}`);
     names.add(e.name);
     if (typeof e.passive !== "string" || e.passive === "") throw new Error(`${e.name}: missing passive`);
+    const { regular, hidden } = e.abilities ?? {};
+    if (!Array.isArray(regular) || regular.length < 1 || regular.length > 2 || regular.some(a => typeof a !== "string" || a === "")) {
+      throw new Error(`${e.name}: needs one or two regular abilities`);
+    }
+    if (hidden !== null && (typeof hidden !== "string" || hidden === "")) throw new Error(`${e.name}: invalid hidden ability`);
+  }
+  const share = test => data.filter(test).length / data.length;
+  if (share(e => e.abilities.hidden !== null) < MIN_HIDDEN_SHARE) {
+    throw new Error("Hardly any entries have a hidden ability. The abilityHidden format upstream probably changed.");
+  }
+  if (share(e => e.abilities.regular.length === 2) < MIN_TWO_REGULAR_SHARE) {
+    throw new Error("Hardly any entries have two regular abilities. The ability2 format upstream probably changed.");
   }
 }
 
