@@ -19,6 +19,7 @@ import dns from "node:dns";
 import { readFile, writeFile } from "node:fs/promises";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
+import { readAbilities } from "./abilities-parser.mjs";
 
 // Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
 // Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
@@ -32,6 +33,11 @@ const OUTPUT = fileURLToPath(new URL("../data/pokemon.json", import.meta.url));
 const LOCALE_URL = `https://raw.githubusercontent.com/pagefaultgames/pokerogue-locales/${process.env.POKEROGUE_LOCALE_REF || "main"}/en/ability.json`;
 const MAX_GENERATIONS = 20; // stops at the first missing file, so new generations are picked up automatically
 const MIN_ENTRIES = 1000; // guard against upstream restructuring the files
+// Ability sanity checks. Today about 79% of entries have a hidden ability and 43% have two regular
+// abilities; these floors sit far below that, so a rebalance passes but a parse that quietly loses
+// a whole ability slot (every entry suddenly "has none") fails the run instead of being written out.
+const MIN_HIDDEN_SHARE = 0.4;
+const MIN_TWO_REGULAR_SHARE = 0.15;
 
 const TYPES = new Set([
   "Normal", "Fire", "Water", "Electric", "Grass", "Ice", "Fighting", "Poison", "Ground",
@@ -158,25 +164,6 @@ const camelCase = id => {
 };
 
 /**
- * Reads the regular and hidden abilities from one species/form block. Upstream lists
- * ability1, ability2 and abilityHidden on every block, using AbilityId.NONE for an empty slot.
- * Returns { regular: [1-2 distinct names], hidden: name | null }.
- */
-function readAbilities(block, label, nameOf) {
-  const idOf = key => {
-    const m = block.match(new RegExp(`\\b${key}:\\s*AbilityId\\.(\\w+)`));
-    if (!m) throw new Error(`${label}: no ${key} found. Did the upstream format change?`);
-    return m[1];
-  };
-  const regularIds = [];
-  for (const id of [idOf("ability1"), idOf("ability2")]) {
-    if (id !== "NONE" && !regularIds.includes(id)) regularIds.push(id);
-  }
-  const hiddenId = idOf("abilityHidden");
-  return { regular: regularIds.map(nameOf), hidden: hiddenId === "NONE" ? null : nameOf(hiddenId) };
-}
-
-/**
  * Reads a species' passive ability. Upstream stores either one ability for every form,
  * or an object keyed by form number. A form with no entry uses the base form's passive,
  * which is the same rule the game applies.
@@ -261,6 +248,13 @@ function validate(data) {
       throw new Error(`${e.name}: needs one or two regular abilities`);
     }
     if (hidden !== null && (typeof hidden !== "string" || hidden === "")) throw new Error(`${e.name}: invalid hidden ability`);
+  }
+  const share = test => data.filter(test).length / data.length;
+  if (share(e => e.abilities.hidden !== null) < MIN_HIDDEN_SHARE) {
+    throw new Error("Hardly any entries have a hidden ability. The abilityHidden format upstream probably changed.");
+  }
+  if (share(e => e.abilities.regular.length === 2) < MIN_TWO_REGULAR_SHARE) {
+    throw new Error("Hardly any entries have two regular abilities. The ability2 format upstream probably changed.");
   }
 }
 

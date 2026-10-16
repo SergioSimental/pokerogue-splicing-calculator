@@ -69,4 +69,4 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 MIT. Pokémon and PokeRogue are property of their respective owners; this is an unofficial fan project.
 
 ## Structure
-`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/abilities.ts` (which abilities a fusion can take), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator).
+`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/abilities.ts` (which abilities a fusion can take), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator), `scripts/abilities-parser.mjs` (reads abilities from PokeRogue's source).
