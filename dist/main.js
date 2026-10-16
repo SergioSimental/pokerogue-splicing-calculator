@@ -85,6 +85,7 @@ function syncAbilityOptions(secondary) {
         option.value = String(i);
         return option;
     }));
+    abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
     abilitySelect.disabled = abilityList.length === 0;
 }
 function render() {
