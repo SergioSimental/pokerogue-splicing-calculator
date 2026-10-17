@@ -2,7 +2,7 @@
   "name": "pokerogue-splicing-calculator",
   "version": "1.0.0",
   "description": "Fusion (splicing) stat and type calculator for PokeRogue",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",

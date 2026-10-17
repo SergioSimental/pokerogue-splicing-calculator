@@ -1,6 +1,7 @@
 import { abilityChoices } from "./abilities.js";
 import { Combobox, normalize } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES } from "./types.js";
 const COLORS = {
@@ -95,6 +96,7 @@ function render() {
         return;
     syncAbilityOptions(secondary);
     const f = fuse(primary, secondary);
+    const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
     const level = clampLevel(Number(levelInput.value));
     const ivs = ivInputs.map(input => clampIv(Number(input.value)));
     const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i)));
@@ -128,7 +130,7 @@ function render() {
     const legend = h("div", "legend");
     legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
     // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
-    result.replaceChildren(h("h2", undefined, `${primary.name} + ${secondary.name}`), types, abilities, labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
+    result.replaceChildren(h("h2", undefined, fusedName), h("div", "parents", `${primary.name} + ${secondary.name}`), types, abilities, labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
 }
 async function init() {
     try {
