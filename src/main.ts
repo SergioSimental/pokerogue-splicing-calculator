@@ -1,6 +1,7 @@
 import { abilityChoices, type AbilityChoice } from "./abilities.js";
 import { Combobox, normalize, type Choice } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
@@ -101,6 +102,7 @@ function render(): void {
   if (!primary || !secondary) return;
   syncAbilityOptions(secondary);
   const f = fuse(primary, secondary);
+  const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
   const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i)));
@@ -138,7 +140,8 @@ function render(): void {
 
   // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
   result.replaceChildren(
-    h("h2", undefined, `${primary.name} + ${secondary.name}`),
+    h("h2", undefined, fusedName),
+    h("div", "parents", `${primary.name} + ${secondary.name}`),
     types,
     abilities,
     labels,
