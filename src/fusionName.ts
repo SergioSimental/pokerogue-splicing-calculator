@@ -2,8 +2,9 @@
  * Fused Pokémon name generation.
  *
  * This is a port of getFusedSpeciesName() from PokeRogue:
- *   https://github.com/pagefaultgames/pokerogue/blob/main/src/utils/pokemon-utils.ts
- *   (main branch as of 16 Oct 2026; look for the function of the same name)
+ *   https://github.com/pagefaultgames/pokerogue/blob/f664cfb732b3b8e01ff3d5fd2c906d07cf03fb47/src/utils/pokemon-utils.ts#L45-L117
+ *   (permalink to commit f664cfb, the latest commit to touch that file; the function was
+ *   identical on the main branch on 18 Oct 2026)
  * Original work copyright 2024-2026 Pagefault Games, licensed under the GNU AGPL-3.0-only. This file
  * is a derivative of that code, and the whole project is released under the AGPL-3.0-only too
  * (see LICENSE). The logic is deliberately kept identical, quirks
@@ -18,7 +19,8 @@
  * @param speciesBName - the secondary (fused) Pokémon's name; supplies the end of the result
  */
 export function fusedSpeciesName(speciesAName: string, speciesBName: string): string {
-  // The two patterns below are copied exactly from the game. Their character classes look odd: next
+  // The two patterns below are kept verbatim for parity with the game (see the permalink in the
+  // header). Their character classes look odd: next
   // to a, e, i, o, u and y they also contain the literal characters ( ? : $ ) as well as - and '.
   // Those extra characters never matter for any name in the data today, but they are kept so that
   // results stay identical to the game's for any name it might add later. Do not "tidy" them.
@@ -59,7 +61,7 @@ export function fusedSpeciesName(speciesAName: string, speciesBName: string): st
   if (splitNameB.length === 1) {
     if (fragBMatch) {
       const lastCharA = fragA.slice(fragA.length - 1);
-      // Quirk kept on purpose: the game cuts by fragBMatch.length (the number of entries in the regex
+      // Kept verbatim for parity with the game: it cuts by fragBMatch.length (the number of entries in the regex
       // result, which is always 3), not by the length of the matched text. Changing it to slice(-1)
       // alters about 3% of all fusion names, so tests pin examples (see tests/fusionName.test.ts).
       const prevCharB = (fragBMatch[1] ?? "").slice(fragBMatch.length - 1);
