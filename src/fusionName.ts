@@ -1,10 +1,12 @@
 /*
  * Fused Pokémon name generation.
  *
- * This is a port of getFusedSpeciesName() from PokeRogue (src/utils/pokemon-utils.ts in
- * https://github.com/pagefaultgames/pokerogue, main branch as of 16 Oct 2026). PokeRogue is
- * licensed under the GNU AGPL-3.0, and this file is a derivative of that code. The whole project is
- * released under the AGPL-3.0 too (see LICENSE). The logic is deliberately kept identical, quirks
+ * This is a port of getFusedSpeciesName() from PokeRogue:
+ *   https://github.com/pagefaultgames/pokerogue/blob/main/src/utils/pokemon-utils.ts
+ *   (main branch as of 16 Oct 2026; look for the function of the same name)
+ * Original work copyright 2024-2026 Pagefault Games, licensed under the GNU AGPL-3.0-only. This file
+ * is a derivative of that code, and the whole project is released under the AGPL-3.0-only too
+ * (see LICENSE). The logic is deliberately kept identical, quirks
  * included, so the names match the game's. Changes from the original are limited to what this
  * project's stricter TypeScript settings require (guards on array reads); behaviour is unchanged.
  *
@@ -16,6 +18,10 @@
  * @param speciesBName - the secondary (fused) Pokémon's name; supplies the end of the result
  */
 export function fusedSpeciesName(speciesAName: string, speciesBName: string): string {
+  // The two patterns below are copied exactly from the game. Their character classes look odd: next
+  // to a, e, i, o, u and y they also contain the literal characters ( ? : $ ) as well as - and '.
+  // Those extra characters never matter for any name in the data today, but they are kept so that
+  // results stay identical to the game's for any name it might add later. Do not "tidy" them.
   const fragAPattern = /([a-z]{2}.*?[aeiou(?:y$)\-']+)(.*?)$/i;
   const fragBPattern = /([a-z]{2}.*?[aeiou(?:y$)\-'])(.*?)$/i;
 
@@ -53,7 +59,10 @@ export function fusedSpeciesName(speciesAName: string, speciesBName: string): st
   if (splitNameB.length === 1) {
     if (fragBMatch) {
       const lastCharA = fragA.slice(fragA.length - 1);
-      const prevCharB = (fragBMatch[1] ?? "").slice(fragBMatch.length - 1) /* sic: upstream slices by the match array's length */;
+      // Quirk kept on purpose: the game cuts by fragBMatch.length (the number of entries in the regex
+      // result, which is always 3), not by the length of the matched text. Changing it to slice(-1)
+      // alters about 3% of all fusion names, so tests pin examples (see tests/fusionName.test.ts).
+      const prevCharB = (fragBMatch[1] ?? "").slice(fragBMatch.length - 1);
       fragB = (/[-']/.test(prevCharB) ? prevCharB : "") + fragBMatch[2] || prevCharB;
       if (lastCharA === fragB[0]) {
         if (/[aiu]/.test(lastCharA)) {
@@ -78,7 +87,7 @@ export function fusedSpeciesName(speciesAName: string, speciesBName: string): st
 
   fragB = `${fragB.slice(0, 1).toLowerCase()}${fragB.slice(1)}`;
 
-  // Prevents some unfortunate fusion names from Rapidash + X
+  // Special case from the game: Rapidash would otherwise fuse into an awkward name, so it is extended to "Rapid"
   if (fragA === "Rapi") {
     fragA = "Rapid";
     if (fragB === "ng") {

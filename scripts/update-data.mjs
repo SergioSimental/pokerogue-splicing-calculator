@@ -153,8 +153,11 @@ function readEntry(block, label) {
  * data/pokemon.json untouched.
  */
 async function loadRequiredLocale(url, what) {
+  console.log(`Fetching ${what}`);
   const text = await fetchText(url);
-  if (text === null) throw new Error(`Could not find ${what} at ${url}`);
+  if (text === null) {
+    throw new Error(`Could not find ${what} at ${url}. To read a different branch or tag, set POKEROGUE_LOCALE_REF.`);
+  }
   try {
     return JSON.parse(text);
   } catch {

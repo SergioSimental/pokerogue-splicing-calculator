@@ -34,9 +34,19 @@ const GAME_RESULTS: [string, string, string][] = [
   ["Mr. Mime", "Ho-Oh", "Mr. Mime-Oh"],
   ["Ho-Oh", "Mr. Mime", "Mr. Ho-Ome"],
   ["Tapu Koko", "Type: Null", "Tapu Kokonull"],
-  // The game's special case for Rapidash.
+  // The game's special case for Rapidash ("Rapi" becomes "Rapid")...
   ["Rapidash", "Ekans", "Rapidns"],
   ["Rapidash", "Arbok", "Rapidk"],
+  // ...and its extra fix when the second half would be just "ng" (these four pin that branch).
+  ["Rapidash", "Dewgong", "Rapidong"],
+  ["Rapidash", "Koffing", "Rapiding"],
+  ["Rapidash", "Metang", "Rapidang"],
+  ["Rapidash", "Klang", "Rapidang"],
+  // The game cuts by the regex result's length, not the text's length (a quirk kept for parity).
+  // These differ from what a "cleaner" slice(-1) would give: Bulba, Bulbay and Bulbao.
+  ["Bulbasaur", "Abra", "Bulbara"],
+  ["Bulbasaur", "Gastly", "Bulbastly"],
+  ["Bulbasaur", "Hypno", "Bulbapno"],
   // Mega / G-Max / Primal / E-Max wrappers: the prefix and suffix are kept around the fused part.
   ["Mega Charizard X", "Garchomp", "Mega Champ X"],
   ["Garchomp", "Mega Charizard X", "Mega Garchorizard X"],
