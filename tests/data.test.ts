@@ -72,6 +72,22 @@ describe("data/pokemon.json", () => {
     expect(new Set(names).size).toBeGreaterThan(150);
   });
 
+  // Format only: the exact names depend on PokeRogue's locale file, which can change.
+  it("has a finished fusion name for every entry", () => {
+    for (const p of dex) {
+      expect(typeof p.fusionName === "string" && p.fusionName.trim() !== "", p.name).toBe(true);
+      expect(p.fusionName.includes("{{"), `${p.name}: ${p.fusionName}`).toBe(false);
+    }
+  });
+
+  it("wraps Mega, G-Max and Primal forms in their name prefix", () => {
+    for (const p of dex) {
+      if (/\(Mega\b/.test(p.name)) expect(p.fusionName, p.name).toMatch(/^Mega /);
+      if (/\(G-Max\b/.test(p.name)) expect(p.fusionName, p.name).toMatch(/^G-Max /);
+      if (/\(Primal\)/.test(p.name)) expect(p.fusionName, p.name).toMatch(/^Primal /);
+    }
+  });
+
   it("has the right numbers for well-known Pokémon", () => {
     const find = (name: string) => dex.find(p => p.name === name);
     expect(find("Garchomp")).toMatchObject({ stats: [108, 130, 95, 80, 85, 102], types: ["Dragon", "Ground"] });

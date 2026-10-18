@@ -20,6 +20,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { readAbilities } from "./abilities-parser.mjs";
+import { formName } from "./form-names.mjs";
 
 // Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
 // Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
@@ -30,7 +31,10 @@ const REPO = "pagefaultgames/pokerogue";
 const REF = process.env.POKEROGUE_REF || "main";
 const BASE_URL = `https://raw.githubusercontent.com/${REPO}/${REF}/src/data/balance/species`;
 const OUTPUT = fileURLToPath(new URL("../data/pokemon.json", import.meta.url));
-const LOCALE_URL = `https://raw.githubusercontent.com/pagefaultgames/pokerogue-locales/${process.env.POKEROGUE_LOCALE_REF || "main"}/en/ability.json`;
+const LOCALE_BASE = `https://raw.githubusercontent.com/pagefaultgames/pokerogue-locales/${process.env.POKEROGUE_LOCALE_REF || "main"}/en`;
+const LOCALE_URL = `${LOCALE_BASE}/ability.json`;
+const SPECIES_LOCALE_URL = `${LOCALE_BASE}/pokemon.json`; // species names, as the game uses them
+const FORM_LOCALE_URL = `${LOCALE_BASE}/pokemon-form-battle.json`; // "Mega {{pokemonName}}" and friends
 const MAX_GENERATIONS = 20; // stops at the first missing file, so new generations are picked up automatically
 const MIN_ENTRIES = 1000; // guard against upstream restructuring the files
 // Ability sanity checks. Today about 79% of entries have a hidden ability and 43% have two regular
@@ -143,6 +147,24 @@ function readEntry(block, label) {
 }
 
 /** Official English ability names, keyed like "speedBoost". Falls back to generated names if unavailable. */
+/**
+ * Loads a locale file that fusion names depend on. Unlike ability names there is no safe fallback
+ * (a guessed name would be wrong, e.g. for Alolan forms), so any problem stops the run and leaves
+ * data/pokemon.json untouched.
+ */
+async function loadRequiredLocale(url, what) {
+  console.log(`Fetching ${what}`);
+  const text = await fetchText(url);
+  if (text === null) {
+    throw new Error(`Could not find ${what} at ${url}. To read a different branch or tag, set POKEROGUE_LOCALE_REF.`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${what} is not valid JSON`);
+  }
+}
+
 async function loadAbilityNames() {
   try {
     const text = await fetchText(LOCALE_URL);
@@ -192,7 +214,7 @@ function parseGeneration(text) {
   return entries;
 }
 
-function buildDataset(generations, abilityNames) {
+function buildDataset(generations, abilityNames, speciesNames, formTemplates) {
   const out = [];
   const generatedNames = new Set();
   const nameOf = abilityId => {
@@ -205,9 +227,14 @@ function buildDataset(generations, abilityNames) {
   for (const text of generations) {
     for (const { id, head, forms, segment } of parseGeneration(text)) {
       const baseName = displayName(id);
+      // The name PokeRogue itself uses for this species (Alolan Raichu is just "Raichu" there).
+      const speciesName = speciesNames[camelCase(id)];
+      if (typeof speciesName !== "string" || speciesName.trim() === "") {
+        throw new Error(`${id}: no English name in the species locale file. Did the upstream format change?`);
+      }
       const passiveFor = readPassives(segment, id);
       const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)), abilities: readAbilities(head, id, nameOf) };
-      out.push({ name: baseName, ...base });
+      out.push({ name: baseName, fusionName: speciesName, ...base });
 
       // Keep an alternate form only when its types, stats or passive differ from every earlier
       // entry of the species. Forms that are identical in all three would just add duplicates.
@@ -224,7 +251,8 @@ function buildDataset(generations, abilityNames) {
         };
         if (seen.has(keyOf(form))) return;
         seen.add(keyOf(form));
-        out.push({ name: `${baseName} (${formLabel})`, ...form });
+        const fusionName = formName(speciesName, field(block, "formKey"), formTemplates, formId);
+        out.push({ name: `${baseName} (${formLabel})`, fusionName, ...form });
       });
     }
   }
@@ -243,6 +271,9 @@ function validate(data) {
     if (names.has(e.name)) throw new Error(`Duplicate name: ${e.name}`);
     names.add(e.name);
     if (typeof e.passive !== "string" || e.passive === "") throw new Error(`${e.name}: missing passive`);
+    if (typeof e.fusionName !== "string" || e.fusionName.trim() === "" || e.fusionName.includes("{{")) {
+      throw new Error(`${e.name}: missing or unfinished fusion name`);
+    }
     const { regular, hidden } = e.abilities ?? {};
     if (!Array.isArray(regular) || regular.length < 1 || regular.length > 2 || regular.some(a => typeof a !== "string" || a === "")) {
       throw new Error(`${e.name}: needs one or two regular abilities`);
@@ -285,7 +316,12 @@ function summarize(oldData, newData) {
 
 async function main() {
   console.log(`Reading ${REPO}@${REF}`);
-  const data = buildDataset(await loadGenerations(), await loadAbilityNames());
+  const data = buildDataset(
+    await loadGenerations(),
+    await loadAbilityNames(),
+    await loadRequiredLocale(SPECIES_LOCALE_URL, "the species name locale file"),
+    await loadRequiredLocale(FORM_LOCALE_URL, "the form name locale file"),
+  );
   validate(data);
 
   const oldData = await readExisting();

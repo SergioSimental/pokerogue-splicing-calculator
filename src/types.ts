@@ -23,6 +23,12 @@ export interface Pokemon {
   /** The passive ability this species (or form) has in PokeRogue. */
   passive: string;
   abilities: Abilities;
+  /**
+   * The name PokeRogue feeds into its fusion-name function for this species or form: the English
+   * species name, wrapped as "Mega X", "G-Max X", "Primal X" or "E-Max X" for those forms. Regional
+   * forms use the plain species name (Alolan Raichu is "Raichu"). Differs from `name`, which is a label.
+   */
+  fusionName: string;
 }
 
 export interface Fusion {

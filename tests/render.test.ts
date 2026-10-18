@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { fusedSpeciesName } from "../src/fusionName.js";
 
 // A name full of characters that would break or inject markup if it were ever treated as HTML.
 const HOSTILE = `<img src=x onerror="alert(1)"> & <script>alert(2)</script> "quoted" 'single'`;
@@ -11,8 +12,8 @@ const HOSTILE_PASSIVE = `Passive <b>A</b> & <img src=x>`;
 const HOSTILE_ABILITY = `Ability <i>A</i> & <img src=x>`;
 
 const dex = [
-  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null } },
-  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" } },
+  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null }, fusionName: HOSTILE },
+  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" }, fusionName: "Safe Mon" },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
@@ -43,12 +44,14 @@ beforeAll(async () => {
 });
 
 describe("results card renders names as plain text", () => {
-  it("shows the exact name in the heading", () => {
-    expect($("#result h2")?.textContent).toContain(HOSTILE);
+  it("shows the fused name in the heading and the exact parent names under it", () => {
+    expect($("#result h2")?.textContent).toBe(fusedSpeciesName(HOSTILE, "Safe Mon"));
+    expect($("#result .parents")?.textContent).toBe(`${HOSTILE} + Safe Mon`);
   });
 
   it("creates no elements from the name", () => {
     expect($("#result h2")?.children.length).toBe(0);
+    expect($("#result .parents")?.children.length).toBe(0);
     expect($("#result img, #result script")).toBeNull();
     expect(document.querySelectorAll("img, script")).toHaveLength(0);
   });
@@ -180,5 +183,26 @@ describe("fused ability (taken from the secondary Pokémon)", () => {
     expect(options()).toEqual(["Ability B", "Ability C", "Hidden B (Hidden)"]);
     expect(select().value).toBe("0");
     expect(abilityText()).toBe("Ability: Ability B");
+  });
+});
+
+describe("fused name", () => {
+  const headline = () => $("#result h2")?.textContent;
+  const swap = () => ($("#swap") as HTMLButtonElement).click();
+
+  it("is built from the primary Pokémon's name first, then the secondary's", () => {
+    expect(headline()).toBe(fusedSpeciesName(HOSTILE, "Safe Mon"));
+  });
+
+  it("changes order when the two are swapped", () => {
+    swap();
+    expect(headline()).toBe(fusedSpeciesName("Safe Mon", HOSTILE));
+    expect($("#result .parents")?.textContent).toBe(`Safe Mon + ${HOSTILE}`);
+    swap();
+    expect(headline()).toBe(fusedSpeciesName(HOSTILE, "Safe Mon"));
+  });
+
+  it("is plain text, never HTML", () => {
+    expect($("#result h2 img, #result h2 script")).toBeNull();
   });
 });
