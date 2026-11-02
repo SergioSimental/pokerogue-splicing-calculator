@@ -67,6 +67,7 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 ## Roadmap
 - Full Pokédex data (e.g. generated from PokeAPI)
 - Search and filters, shareable links
+- Held items for the primary Pokémon: Soul Dew, Macho Brace and vitamins. Following PokeRogue, vitamins add 10% to a fused base stat per stack (up to that stat's IV), Soul Dew strengthens the nature effect by 0.1 per stack (up to 10), and Macho Brace adds flat stats per stack (up to 50)
 
 ## License
 Copyright (c) 2026 SergioSimental. Includes code from PokeRogue, copyright 2024-2026 Pagefault Games (AGPL-3.0-only). Licensed under the [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only). The project includes a port of code from PokeRogue (`src/fusionName.ts`), which is itself AGPL-3.0 licensed, so the whole project is released under the same licence. If you run a modified version of this site for other people, the AGPL requires you to offer them its source code; the page links to this repository for that reason. Earlier versions of this project (before the licence changed) were released under the MIT licence, and copies of those remain under it.
