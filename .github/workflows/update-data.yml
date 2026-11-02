@@ -5,8 +5,10 @@ on:
     - cron: "0 6 * * 1" # every Monday at 06:00 UTC
   workflow_dispatch: # lets you run it manually from the Actions tab
 
+# main requires a pull request, so this workflow opens one instead of pushing.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update:
@@ -17,20 +19,29 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: npm
+
+      - run: npm ci
 
       - name: Regenerate data/pokemon.json
         run: node scripts/update-data.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit changes
-        run: |
-          if [ -n "$(git status --porcelain data)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add data
-            git commit -m "chore: update PokeRogue data"
-            git push
-          else
-            echo "No data changes."
-          fi
+      # A bad refresh stops here and never becomes a pull request.
+      - name: Run unit tests on the new data
+        run: npm test
+
+      - name: Open PR with changes
+        uses: peter-evans/create-pull-request@v7
+        with:
+          # Optional: add a repository secret named PR_TOKEN (a fine-grained token with
+          # Contents and Pull requests write access) so test.yml also runs on the PR.
+          # Without it the default token is used, and the PR is created but test.yml does not run.
+          token: ${{ secrets.PR_TOKEN || secrets.GITHUB_TOKEN }}
+          add-paths: data
+          commit-message: "chore: update PokeRogue data"
+          branch: chore/update-pokerogue-data
+          delete-branch: true
+          title: "chore: update PokeRogue data"
+          body: "Automated weekly data refresh."
