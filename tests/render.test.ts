@@ -673,31 +673,34 @@ describe("the two Pokémon's items combine when they fuse", () => {
     expect(holding()).toBe("Holds after fusing: Protein 7 (3 + 4); Iron 9 (from the secondary)");
   });
 
-  it("stops a vitamin at the primary's IV for that stat", () => {
+  it("stops the combined vitamins at the primary's IV for that stat", () => {
     setNumber("iv1", "5");
-    setNumber("vitamin1", "5");
-    setNumber("secondary-vitamin1", "20");
+    setNumber("vitamin1", "4");
+    setNumber("secondary-vitamin1", "4");
     expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
-    expect(holding()).toBe("Holds after fusing: Protein 5 (5 + 20, limit 5)");
+    expect(holding()).toBe("Holds after fusing: Protein 5 (4 + 4, limit 5)");
   });
 
-  // From PlayerPokemon.fuse: with no matching item on the primary the whole stack moves over, so it can pass the primary's IV.
-  it("carries a whole vitamin stack over when the primary holds none, even above its IV", () => {
-    setNumber("iv1", "5");
-    setNumber("secondary-vitamin1", "31");
-    expect(shown()).toEqual([150, 294, 85, 80, 75, 70]);
-    expect(holding()).toBe("Holds after fusing: Protein 31 (from the secondary, above the primary's limit of 5)");
-  });
-
-  it("limits the primary's vitamin boxes to its IV for each stat, and the secondary's to 31", () => {
+  // The fused Pokémon keeps the primary's IVs, so both boxes stop at the primary's IV and nothing can pass it.
+  it("limits both Pokémon's vitamin boxes to the primary's IV for each stat", () => {
     setNumber("iv1", "5");
     expect(input("vitamin1").max).toBe("5");
+    expect(input("secondary-vitamin1").max).toBe("5");
     expect(input("vitamin2").max).toBe("31");
-    expect(input("secondary-vitamin1").max).toBe("31");
+    expect(input("secondary-vitamin2").max).toBe("31");
     setNumber("vitamin1", "20");
-    expect(input("vitamin1").value).toBe("5");
     setNumber("secondary-vitamin1", "20");
-    expect(input("secondary-vitamin1").value).toBe("20");
+    expect(input("vitamin1").value).toBe("5");
+    expect(input("secondary-vitamin1").value).toBe("5");
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
+    expect(holding()).toBe("Holds after fusing: Protein 5 (5 + 5, limit 5)");
+  });
+
+  it("pulls the secondary's vitamin box down too when the primary's IV is lowered", () => {
+    setNumber("secondary-vitamin3", "20");
+    setNumber("iv3", "8");
+    expect(input("secondary-vitamin3").value).toBe("8");
+    expect(holding()).toBe("Holds after fusing: Calcium 8 (from the secondary)");
   });
 
   it("holds a typed vitamin count to the IV straight away, before the box loses focus", () => {
@@ -706,6 +709,14 @@ describe("the two Pokémon's items combine when they fuse", () => {
     box.value = "20";
     box.dispatchEvent(new Event("input", { bubbles: true })); // typing, no change event yet
     expect(shown()).toEqual([150, 112, 85, 80, 75, 70]); // counted as 5, the IV
+  });
+
+  it("holds a vitamin count typed into the secondary's box to the primary's IV straight away too", () => {
+    setNumber("iv1", "5");
+    const box = input("secondary-vitamin1");
+    box.value = "20";
+    box.dispatchEvent(new Event("input", { bubbles: true })); // typing, no change event yet
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
   });
 
   it("pulls a primary vitamin box down when its IV is lowered afterwards", () => {
@@ -728,6 +739,26 @@ describe("the two Pokémon's items combine when they fuse", () => {
     tick("eviolite");
     expect(arrows()).toEqual([null, null, "→ 105", null, "→ 105", null]); // not x1.5 twice
     expect(holding()).toBe("Holds after fusing: Eviolite");
+  });
+
+  // Every item doubles exactly its own stats (50-stat Pokémon: plain stats 125, 70, 70, 70, 70, 70, so 140 once doubled).
+  it.each([
+    ["light-ball", "pikachu (cosplay)", [null, "→ 140", null, "→ 140", null, null]],
+    ["thick-club", "alolan marowak", [null, "→ 140", null, null, null, null]],
+    ["metal-powder", "ditto", [null, null, "→ 140", null, null, null]],
+    ["quick-powder", "ditto", [null, null, null, null, null, "→ 140"]],
+    ["deep-sea-tooth", "clamperl", [null, null, null, "→ 140", null, null]],
+    ["deep-sea-scale", "clamperl", [null, null, null, null, "→ 140", null]],
+  ])("%s doubles only its own stats, held by the primary or by the secondary", (id, species, expected) => {
+    pick("#primary", species);
+    pick("#secondary", "safe");
+    tick(`item-${id}`);
+    expect(arrows()).toEqual(expected);
+    tick(`item-${id}`, false);
+    pick("#primary", "safe");
+    pick("#secondary", species);
+    tick(`secondary-item-${id}`);
+    expect(arrows()).toEqual(expected);
   });
 
   it("applies a species item held by the secondary, since the fused Pokémon is also that species", () => {

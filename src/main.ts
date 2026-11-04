@@ -79,9 +79,11 @@ function heldGroup(prefix: string): HeldGroup {
 const primaryItems = heldGroup("");
 const secondaryItems = heldGroup("secondary-");
 
-/** The primary Pokémon's IV for a stat, which is also the most vitamins it can hold for it. */
+/**
+ * The primary Pokémon's IV for a stat, which is the most vitamins either Pokémon's box takes for it: the fused
+ * Pokémon keeps the primary's IVs, and the secondary's own IVs are not asked for.
+ */
 const primaryIv = (stat: number) => clampIv(Number(ivInputs[stat]?.value));
-const secondaryVitaminLimit = () => HELD_ITEM_LIMITS.vitamin; // the secondary's IVs are not asked for: at most 31
 
 /** Every number box of a group with its limit. Counts are kept to digits and clamped to the game's stack limits. */
 function numberBoxes(group: HeldGroup, vitaminLimit: (stat: number) => number) {
@@ -91,7 +93,7 @@ function numberBoxes(group: HeldGroup, vitaminLimit: (stat: number) => number) {
     ...group.vitamins.map((input, i) => ({ input, limit: () => vitaminLimit(i) })),
   ];
 }
-const heldBoxes = [...numberBoxes(primaryItems, primaryIv), ...numberBoxes(secondaryItems, secondaryVitaminLimit)];
+const heldBoxes = [...numberBoxes(primaryItems, primaryIv), ...numberBoxes(secondaryItems, primaryIv)];
 
 /** What a Pokémon holds according to its boxes, with every count held to its limit. */
 function readHeld(group: HeldGroup, vitaminLimit: (stat: number) => number): HeldItems {
@@ -184,11 +186,13 @@ function syncSpeciesItems(group: HeldGroup, pokemon: Pokemon): void {
   group.speciesBox.hidden = shown.size === 0;
 }
 
-/** Pulls the primary Pokémon's vitamin boxes down to its IVs (after an IV is lowered or items are swapped in). */
-function clampPrimaryVitamins(): void {
-  primaryItems.vitamins.forEach((input, i) => {
-    input.value = String(clampCount(Number(input.value), primaryIv(i)));
-  });
+/** Pulls both Pokémon's vitamin boxes down to the primary's IVs (after an IV is lowered or items are swapped in). */
+function clampVitamins(): void {
+  for (const group of [primaryItems, secondaryItems]) {
+    group.vitamins.forEach((input, i) => {
+      input.value = String(clampCount(Number(input.value), primaryIv(i)));
+    });
+  }
 }
 
 /** Moves each Pokémon's items to the other box set, so they stay with their Pokémon when the two are swapped. */
@@ -213,7 +217,7 @@ function swapHeldItems(): void {
     const other = secondaryItems.species.get(id);
     if (other) swapChecked(box, other.box);
   }
-  clampPrimaryVitamins();
+  clampVitamins();
 }
 
 function render(): void {
@@ -226,12 +230,14 @@ function render(): void {
   const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-  // A primary Pokémon can hold at most as many vitamins as its IV for that stat.
-  primaryItems.vitamins.forEach((input, i) => {
-    input.max = String(ivs[i] ?? 0);
-  });
+  // Vitamins are held to the primary's IV for that stat, in both boxes.
+  for (const group of [primaryItems, secondaryItems]) {
+    group.vitamins.forEach((input, i) => {
+      input.max = String(ivs[i] ?? 0);
+    });
+  }
   const primaryHeld = readHeld(primaryItems, i => ivs[i] ?? 0);
-  const secondaryHeld = readHeld(secondaryItems, secondaryVitaminLimit);
+  const secondaryHeld = readHeld(secondaryItems, i => ivs[i] ?? 0);
   // On fusion the game moves everything the secondary holds onto the primary, so that is what the stats use.
   const held = mergeHeldItems(primaryHeld, secondaryHeld, ivs);
   // Shuckle Juice and Old Gateau change the primary Pokémon's own base stats before the two are averaged.
@@ -323,7 +329,7 @@ async function init(): Promise<void> {
     input.oninput = render;
     input.onchange = () => {
       input.value = String(clampIv(Number(input.value)));
-      clampPrimaryVitamins();
+      clampVitamins();
       render();
     };
   }

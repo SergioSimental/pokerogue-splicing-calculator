@@ -76,7 +76,7 @@
       <legend>Held items of the primary Pokémon</legend>
       <label class="wide">Soul Dew (0 to 10)<input id="soul-dew" type="number" min="0" max="10" step="1" value="0" inputmode="numeric"></label>
       <label class="wide">Macho Brace (0 to 50)<input id="macho-brace" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
-      <span class="subhead">Vitamins (up to the IV of each stat)</span>
+      <span class="subhead">Vitamins (up to the primary's IV for each stat)</span>
       <label>HP Up<input id="vitamin0" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <label>Protein<input id="vitamin1" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <label>Iron<input id="vitamin2" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
@@ -92,7 +92,7 @@
       <div id="species-items" class="species-items" hidden>
         <span class="subhead">Items for the picked Pokémon</span>
       </div>
-      <p class="hint">Shuckle Juice and Old Gateau change this Pokémon's own base stats, and the fusion then averages them with the other Pokémon's. Vitamins, Soul Dew and Macho Brace change the stat shown. Vitamins count up to the stat's IV. Eviolite and the species items only apply in battle, so they add an arrow with the in-battle value.</p>
+      <p class="hint">Shuckle Juice and Old Gateau change this Pokémon's own base stats, and the fusion then averages them with the other Pokémon's. Vitamins, Soul Dew and Macho Brace change the stat shown. Vitamins count up to the stat's IV, for both Pokémon, since the fused Pokémon keeps the primary's IVs. Eviolite and the species items only apply in battle, so they add an arrow with the in-battle value.</p>
     </fieldset>
   </section>
 
@@ -101,7 +101,7 @@
       <legend>Held items of the secondary Pokémon</legend>
       <label class="wide">Soul Dew (0 to 10)<input id="secondary-soul-dew" type="number" min="0" max="10" step="1" value="0" inputmode="numeric"></label>
       <label class="wide">Macho Brace (0 to 50)<input id="secondary-macho-brace" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
-      <span class="subhead">Vitamins (0 to 31; in the game, up to that Pokémon's own IV for the stat)</span>
+      <span class="subhead">Vitamins (up to the primary's IV for each stat)</span>
       <label>HP Up<input id="secondary-vitamin0" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <label>Protein<input id="secondary-vitamin1" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <label>Iron<input id="secondary-vitamin2" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
@@ -117,7 +117,7 @@
       <div id="secondary-species-items" class="species-items" hidden>
         <span class="subhead">Items for the picked Pokémon</span>
       </div>
-      <p class="hint">When the two Pokémon fuse, everything the secondary Pokémon holds moves onto the primary. Matching items add up to their limit. A vitamin the primary does not hold at all moves over whole, even above the primary's IV.</p>
+      <p class="hint">When the two Pokémon fuse, everything the secondary Pokémon holds moves onto the primary. Matching items add up to their limit. A vitamin cannot go above the primary's IV.</p>
     </fieldset>
   </section>
 
