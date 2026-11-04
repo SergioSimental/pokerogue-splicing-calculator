@@ -42,7 +42,10 @@ describe("clampCount", () => {
 
 // ---- species-specific items ----
 import { readFileSync } from "node:fs";
-import { battleMultiplier, battleStat, evioliteMultiplier, matchesSpecies, SPECIES_ITEMS, speciesItemsFor } from "../src/heldItems.js";
+import {
+  battleMultiplier, battleStat, evioliteMultiplier, fusedItemLines, matchesSpecies, mergeHeldItems, mergeStacks, SPECIES_ITEMS,
+  speciesItemsFor, speciesItemsOf, type HeldItems,
+} from "../src/heldItems.js";
 import type { Pokemon } from "../src/types.js";
 
 const mon = (name: string, extra: Partial<Pokemon> = {}): Pokemon => ({
@@ -227,5 +230,160 @@ describe("battleStat", () => {
     expect(battleStat(237, 1)).toBe(237);
     expect(battleStat(1, 1.25)).toBe(1);
     expect(battleStat(0, 2)).toBe(1);
+  });
+});
+
+describe("speciesItemsOf", () => {
+  it("lists only what that one Pokémon can use, forms included", () => {
+    expect(speciesItemsOf(mon("Pikachu (Cosplay)")).map(i => i.id)).toEqual(["light-ball"]);
+    expect(speciesItemsOf(mon("Ditto")).map(i => i.id)).toEqual(["metal-powder", "quick-powder"]);
+    expect(speciesItemsOf(mon("Alolan Marowak")).map(i => i.id)).toEqual(["thick-club"]);
+  });
+
+  it("lists nothing for a Pokémon none of the items fit, even a near-miss like Raichu", () => {
+    expect(speciesItemsOf(mon("Raichu"))).toEqual([]);
+    expect(speciesItemsOf(mon("Garchomp"))).toEqual([]);
+  });
+});
+
+// PlayerPokemon.fuse moves each of the secondary's items onto the primary with BattleScene.tryTransferHeldItemModifier.
+describe("mergeStacks", () => {
+  it("adds the two stacks when both Pokémon hold the item", () => {
+    expect(mergeStacks(3, 4, 10)).toBe(7);
+    expect(mergeStacks(1, 1, 50)).toBe(2);
+  });
+
+  it("stops at the limit when the stacks add up to more", () => {
+    expect(mergeStacks(30, 25, 50)).toBe(50);
+    expect(mergeStacks(9, 5, 10)).toBe(10);
+    expect(mergeStacks(1, 1, 1)).toBe(1);
+  });
+
+  it("takes nothing when the primary's stack is already full", () => {
+    expect(mergeStacks(10, 5, 10)).toBe(10);
+    expect(mergeStacks(5, 20, 5)).toBe(5);
+  });
+
+  it("never shrinks a primary stack that is somehow already over the limit", () => {
+    expect(mergeStacks(12, 5, 10)).toBe(12);
+  });
+
+  it("keeps the primary's stack when the secondary holds none", () => {
+    expect(mergeStacks(4, 0, 10)).toBe(4);
+    expect(mergeStacks(0, 0, 10)).toBe(0);
+  });
+
+  it("moves the whole stack over when the primary holds none, even above the primary's limit", () => {
+    expect(mergeStacks(0, 7, 10)).toBe(7);
+    expect(mergeStacks(0, 31, 5)).toBe(31); // a vitamin: the primary's IV is 5, the secondary's was higher
+  });
+});
+
+describe("mergeHeldItems", () => {
+  const held = (extra: Partial<HeldItems> = {}): HeldItems => ({
+    soulDew: 0, machoBrace: 0, vitamins: [0, 0, 0, 0, 0, 0], sweetJuice: false, foulJuice: false, oldGateau: false,
+    eviolite: false, species: [], ...extra,
+  });
+  const ivs = [31, 31, 31, 31, 31, 31];
+
+  it("is empty when neither Pokémon holds anything", () => {
+    expect(mergeHeldItems(held(), held(), ivs)).toEqual(held());
+  });
+
+  it("combines each stackable item by the game's rule, each with its own limit", () => {
+    const merged = mergeHeldItems(
+      held({ soulDew: 4, machoBrace: 30, vitamins: [2, 0, 9, 0, 0, 31] }),
+      held({ soulDew: 3, machoBrace: 25, vitamins: [3, 6, 0, 0, 0, 5] }),
+      ivs,
+    );
+    expect(merged).toMatchObject({ soulDew: 7, machoBrace: 50, vitamins: [5, 6, 9, 0, 0, 31] });
+  });
+
+  it("limits vitamins by the primary's IV for that stat", () => {
+    const merged = mergeHeldItems(
+      held({ vitamins: [0, 5, 3, 0, 0, 0] }),
+      held({ vitamins: [0, 20, 20, 20, 0, 0] }),
+      [31, 5, 10, 4, 31, 31],
+    );
+    expect(merged.vitamins).toEqual([0, 5, 10, 20, 0, 0]); // 5 full, 10 capped, 20 carried over whole (primary had none)
+  });
+
+  it("gives the fused Pokémon an item if either Pokémon held it, once", () => {
+    const merged = mergeHeldItems(
+      held({ eviolite: true, species: ["light-ball", "quick-powder"] }),
+      held({ eviolite: true, species: ["light-ball", "metal-powder"] }),
+      ivs,
+    );
+    expect(merged.eviolite).toBe(true);
+    expect(merged.species).toEqual(["light-ball", "metal-powder", "quick-powder"]);
+    expect(mergeHeldItems(held(), held({ eviolite: true }), ivs).eviolite).toBe(true);
+  });
+});
+
+describe("fusedItemLines", () => {
+  const held = (extra: Partial<HeldItems> = {}): HeldItems => ({
+    soulDew: 0, machoBrace: 0, vitamins: [0, 0, 0, 0, 0, 0], sweetJuice: false, foulJuice: false, oldGateau: false,
+    eviolite: false, species: [], ...extra,
+  });
+  const ivs = [31, 31, 31, 31, 31, 31];
+  const lines = (a: HeldItems, b: HeldItems, iv = ivs) => fusedItemLines(a, b, mergeHeldItems(a, b, iv), iv);
+
+  it("is empty when nothing is held", () => {
+    expect(lines(held(), held())).toEqual([]);
+  });
+
+  it("lists what only the primary holds without a note", () => {
+    expect(lines(held({ soulDew: 4, eviolite: true }), held())).toEqual(["Soul Dew 4", "Eviolite"]);
+  });
+
+  it("says where an item came from and shows both stacks when they add up", () => {
+    expect(lines(held({ soulDew: 4 }), held({ soulDew: 3, machoBrace: 50 }))).toEqual([
+      "Soul Dew 7 (4 + 3)",
+      "Macho Brace 50 (from the secondary)",
+    ]);
+  });
+
+  it("mentions the limit when the stacks added up to more", () => {
+    expect(lines(held({ machoBrace: 30 }), held({ machoBrace: 25 }))).toEqual(["Macho Brace 50 (30 + 25, limit 50)"]);
+  });
+
+  it("names the vitamins and flags a stack carried over above the primary's limit", () => {
+    expect(lines(held(), held({ vitamins: [0, 31, 4, 0, 0, 0] }), [31, 5, 31, 31, 31, 31])).toEqual([
+      "Protein 31 (from the secondary, above the primary's limit of 5)",
+      "Iron 4 (from the secondary)",
+    ]);
+  });
+
+  it("lists Eviolite and species items, noting those that came from the secondary", () => {
+    expect(lines(held({ species: ["light-ball"] }), held({ eviolite: true, species: ["metal-powder"] }))).toEqual([
+      "Eviolite (from the secondary)",
+      "Light Ball",
+      "Metal Powder (from the secondary)",
+    ]);
+  });
+});
+
+describe("base-stat items on fusion", () => {
+  const held = (extra: Partial<HeldItems> = {}): HeldItems => ({
+    soulDew: 0, machoBrace: 0, vitamins: [0, 0, 0, 0, 0, 0], sweetJuice: false, foulJuice: false, oldGateau: false,
+    eviolite: false, species: [], ...extra,
+  });
+  const ivs = [31, 31, 31, 31, 31, 31];
+
+  it("the fused Pokémon holds an item if either Pokémon held it, and one is as good as two", () => {
+    const merged = mergeHeldItems(held({ sweetJuice: true, oldGateau: true }), held({ sweetJuice: true, foulJuice: true }), ivs);
+    expect(merged).toMatchObject({ sweetJuice: true, foulJuice: true, oldGateau: true });
+    expect(mergeHeldItems(held(), held({ oldGateau: true }), ivs).oldGateau).toBe(true);
+    expect(mergeHeldItems(held(), held(), ivs)).toMatchObject({ sweetJuice: false, foulJuice: false, oldGateau: false });
+  });
+
+  it("lists them by their in-game names, saying when they came from the secondary", () => {
+    const a = held({ sweetJuice: true });
+    const b = held({ foulJuice: true, oldGateau: true });
+    expect(fusedItemLines(a, b, mergeHeldItems(a, b, ivs), ivs)).toEqual([
+      "Sweet Shuckle Juice",
+      "Foul Shuckle Juice (from the secondary)",
+      "Old Gateau (from the secondary)",
+    ]);
   });
 });

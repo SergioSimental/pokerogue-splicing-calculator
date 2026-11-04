@@ -20,6 +20,7 @@ const dex = [
   { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false },
   { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
   { name: "Gmax Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
+  { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
@@ -52,14 +53,15 @@ const totalLine = () => $("#result .total")?.textContent;
 /** Back to level 50, 31 IVs, a neutral nature, no held items and nothing ticked (earlier groups leave things changed). */
 const resetCalculator = () => {
   setNumber("level", "50");
-  for (let i = 0; i < 6; i++) {
-    setNumber(`iv${i}`, "31");
-    setNumber(`vitamin${i}`, "0");
+  for (let i = 0; i < 6; i++) setNumber(`iv${i}`, "31");
+  for (const prefix of ["", "secondary-"]) {
+    setNumber(`${prefix}soul-dew`, "0");
+    setNumber(`${prefix}macho-brace`, "0");
+    for (let i = 0; i < 6; i++) setNumber(`${prefix}vitamin${i}`, "0");
+    for (const box of document.querySelectorAll<HTMLInputElement>(`#${prefix}eviolite, #${prefix}species-items input`)) tick(box.id, false);
+    for (const id of ["sweet-shuckle-juice", "foul-shuckle-juice", "old-gateau"]) tick(`${prefix}${id}`, false);
   }
-  setNumber("soul-dew", "0");
-  setNumber("macho-brace", "0");
   pick("#nature", "hardy");
-  for (const box of document.querySelectorAll<HTMLInputElement>("#eviolite, #species-items input")) tick(box.id, false);
 };
 
 beforeAll(async () => {
@@ -263,7 +265,7 @@ describe("held item boxes", () => {
 
   it("has a Soul Dew box, a Macho Brace box and six vitamin boxes, all starting at 0", () => {
     expect($(".itemrow fieldset legend")?.textContent).toBe("Held items of the primary Pokémon");
-    expect(document.querySelectorAll(".itemrow input[type=number], .itemrow input[inputmode]")).toHaveLength(8);
+    expect(($(".itemrow fieldset") as HTMLElement).querySelectorAll("input[type=number]")).toHaveLength(8);
     for (const id of ids) expect(input(id).value, id).toBe("0");
   });
 
@@ -381,82 +383,125 @@ describe("held items change the stats shown", () => {
   });
 });
 
-describe("Eviolite and species items", () => {
+describe("Eviolite and species items, one set per Pokémon", () => {
   const box = (id: string) => $(`#${id}`) as HTMLInputElement;
-  const visibleSpecies = () =>
-    [...document.querySelectorAll<HTMLLabelElement>("#species-items label")].filter(l => !l.hidden).map(l => l.querySelector("b")?.textContent);
-  const section = () => $("#species-items") as HTMLElement;
+  const shownIn = (prefix: string) =>
+    [...document.querySelectorAll<HTMLLabelElement>(`#${prefix}species-items label`)].filter(l => !l.hidden).map(l => l.querySelector("b")?.textContent);
+  const primarySpecies = () => shownIn("");
+  const secondarySpecies = () => shownIn("secondary-");
+  const section = (prefix: string) => $(`#${prefix}species-items`) as HTMLElement;
 
-  it("always shows Eviolite, unticked, with its Gigantamax note", () => {
-    expect(box("eviolite").type).toBe("checkbox");
-    expect(box("eviolite").checked).toBe(false);
-    expect(box("eviolite").closest("label")?.textContent).toContain("No effect on Gigantamaxed Pokémon");
+  beforeEach(resetCalculator);
+
+  it("shows Eviolite for both Pokémon, unticked, with its Gigantamax note", () => {
+    for (const id of ["eviolite", "secondary-eviolite"]) {
+      expect(box(id).type).toBe("checkbox");
+      expect(box(id).checked).toBe(false);
+      expect(box(id).closest("label")?.textContent).toContain("No effect on Gigantamaxed Pokémon");
+    }
   });
 
-  it("shows no species items, and no heading for them, when neither picked Pokémon can use one", () => {
-    expect(section().hidden).toBe(true);
-    expect(visibleSpecies()).toEqual([]);
+  it("has a held items section for each Pokémon", () => {
+    const legends = [...document.querySelectorAll(".itemrow fieldset legend")].map(l => l.textContent);
+    expect(legends).toEqual(["Held items of the primary Pokémon", "Held items of the secondary Pokémon"]);
+    expect(document.querySelectorAll("#secondary-soul-dew, #secondary-macho-brace, [id^=secondary-vitamin]")).toHaveLength(8);
   });
 
-  it("offers Light Ball for a Pikachu form picked as the primary Pokémon", () => {
+  it("shows no species items, and no heading for them, when neither Pokémon can use one", () => {
+    pick("#primary", "img");
+    pick("#secondary", "safe");
+    expect(section("").hidden).toBe(true);
+    expect(section("secondary-").hidden).toBe(true);
+    expect(primarySpecies()).toEqual([]);
+    expect(secondarySpecies()).toEqual([]);
+  });
+
+  it("offers an item only in the section of the Pokémon that can use it", () => {
     pick("#primary", "pikachu (cosplay)");
-    expect(section().hidden).toBe(false);
-    expect(visibleSpecies()).toEqual(["Light Ball"]);
-  });
-
-  it("offers it when the Pikachu is the secondary Pokémon instead, as the game does", () => {
+    pick("#secondary", "safe");
+    expect(primarySpecies()).toEqual(["Light Ball"]);
+    expect(secondarySpecies()).toEqual([]);
+    expect(section("secondary-").hidden).toBe(true);
     pick("#primary", "img");
     pick("#secondary", "pikachu");
-    expect(visibleSpecies()).toEqual(["Light Ball"]);
+    expect(primarySpecies()).toEqual([]);
+    expect(secondarySpecies()).toEqual(["Light Ball"]);
   });
 
   it("offers each item only for its own species", () => {
+    pick("#primary", "img");
     pick("#secondary", "ditto");
-    expect(visibleSpecies()).toEqual(["Metal Powder", "Quick Powder"]);
+    expect(secondarySpecies()).toEqual(["Metal Powder", "Quick Powder"]);
     pick("#secondary", "clamperl");
-    expect(visibleSpecies()).toEqual(["Deep Sea Tooth", "Deep Sea Scale"]);
+    expect(secondarySpecies()).toEqual(["Deep Sea Tooth", "Deep Sea Scale"]);
     pick("#secondary", "alolan marowak");
-    expect(visibleSpecies()).toEqual(["Thick Club"]);
+    expect(secondarySpecies()).toEqual(["Thick Club"]);
     pick("#secondary", "raichu");
-    expect(visibleSpecies()).toEqual([]);
-    expect(section().hidden).toBe(true);
+    expect(secondarySpecies()).toEqual([]);
+    expect(section("secondary-").hidden).toBe(true);
   });
 
-  it("combines the items of both Pokémon", () => {
+  it("fills both sections when both Pokémon can use items", () => {
     pick("#primary", "pikachu");
     pick("#secondary", "ditto");
-    expect(visibleSpecies()).toEqual(["Light Ball", "Metal Powder", "Quick Powder"]);
+    expect(primarySpecies()).toEqual(["Light Ball"]);
+    expect(secondarySpecies()).toEqual(["Metal Powder", "Quick Powder"]);
   });
 
-  it("keeps a ticked item while the Pokémon that unlocks it stays picked, even if the two are swapped", () => {
+  it("keeps a ticked item while its Pokémon stays picked and unticks it once another Pokémon replaces it", () => {
+    pick("#primary", "pikachu");
+    pick("#secondary", "safe");
     tick("item-light-ball");
-    ($("#swap") as HTMLButtonElement).click();
-    expect(visibleSpecies()).toContain("Light Ball");
+    pick("#secondary", "ditto");
     expect(box("item-light-ball").checked).toBe(true);
-    ($("#swap") as HTMLButtonElement).click();
-    expect(box("item-light-ball").checked).toBe(true);
-  });
-
-  it("hides and unticks an item once no picked Pokémon can use it, and it stays unticked afterwards", () => {
     pick("#primary", "img");
-    expect(visibleSpecies()).toEqual(["Metal Powder", "Quick Powder"]);
+    expect(primarySpecies()).toEqual([]);
     expect(box("item-light-ball").checked).toBe(false);
     pick("#primary", "pikachu");
-    expect(box("item-light-ball").checked).toBe(false);
+    expect(box("item-light-ball").checked).toBe(false); // cleared, not just hidden
   });
 
-  it("does not touch Eviolite when the Pokémon change", () => {
+  it("does not touch the Eviolite boxes when the Pokémon change", () => {
     tick("eviolite");
-    pick("#primary", "img");
-    pick("#secondary", "safe");
+    tick("secondary-eviolite");
+    pick("#primary", "pikachu");
+    pick("#secondary", "ditto");
     expect(box("eviolite").checked).toBe(true);
+    expect(box("secondary-eviolite").checked).toBe(true);
+  });
+
+  it("keeps each Pokémon's items with it when the two are swapped", () => {
+    pick("#primary", "pikachu");
+    pick("#secondary", "ditto");
+    tick("item-light-ball");
+    tick("secondary-item-metal-powder");
+    tick("eviolite");
+    setNumber("macho-brace", "20");
+    setNumber("secondary-soul-dew", "6");
+    setNumber("secondary-vitamin1", "9");
+    ($("#swap") as HTMLButtonElement).click();
+    // Ditto is now the primary Pokémon and brought its items along, and so did Pikachu.
+    expect(primarySpecies()).toEqual(["Metal Powder", "Quick Powder"]);
+    expect(secondarySpecies()).toEqual(["Light Ball"]);
+    expect(box("item-metal-powder").checked).toBe(true);
+    expect(box("secondary-item-light-ball").checked).toBe(true);
+    expect(box("secondary-eviolite").checked).toBe(true);
+    expect(box("eviolite").checked).toBe(false);
+    expect(box("secondary-macho-brace").value).toBe("20");
+    expect(box("macho-brace").value).toBe("0");
+    expect(box("soul-dew").value).toBe("6");
+    expect(box("vitamin1").value).toBe("9");
+    ($("#swap") as HTMLButtonElement).click();
+    expect(box("item-light-ball").checked).toBe(true);
+    expect(box("macho-brace").value).toBe("20");
+    expect(box("secondary-vitamin1").value).toBe("9");
   });
 
   it("puts the default pair back for the next group", () => {
-    tick("eviolite", false);
     pick("#primary", "img");
     pick("#secondary", "safe");
-    expect(visibleSpecies()).toEqual([]);
+    expect(primarySpecies()).toEqual([]);
+    expect(secondarySpecies()).toEqual([]);
   });
 });
 
@@ -519,16 +564,16 @@ describe("Eviolite and species items change the in-battle stats", () => {
 
     pick("#primary", "raichu");
     pick("#secondary", "ditto");
-    tick("item-metal-powder");
+    tick("secondary-item-metal-powder");
     expect(arrows()).toEqual([null, null, "\u2192 140", null, null, null]);
-    tick("item-quick-powder");
+    tick("secondary-item-quick-powder");
     expect(arrows()).toEqual([null, null, "\u2192 140", null, null, "\u2192 140"]);
   });
 
   it("stacks items that boost the same stat, Eviolite included", () => {
     pick("#primary", "pikachu (cosplay)");
     pick("#secondary", "clamperl");
-    for (const id of ["eviolite", "item-light-ball", "item-deep-sea-tooth", "item-deep-sea-scale"]) tick(id);
+    for (const id of ["eviolite", "item-light-ball", "secondary-item-deep-sea-tooth", "secondary-item-deep-sea-scale"]) tick(id);
     // Atk x2 (Light Ball), Def x1.5 (Eviolite), SpA x4 (Light Ball and Deep Sea Tooth), SpD x3 (Eviolite and Deep Sea Scale)
     expect(arrows()).toEqual([null, "\u2192 140", "\u2192 105", "\u2192 280", "\u2192 210", null]);
     expect(totalLine()).toBe("Total at Lv 50: 475 (930 in battle)");
@@ -558,5 +603,210 @@ describe("Eviolite and species items change the in-battle stats", () => {
     pick("#primary", "img");
     pick("#secondary", "safe");
     expect(shown()).toEqual([150, 90, 85, 80, 75, 70]);
+  });
+});
+
+// The default pair (the hostile Pokémon + Safe Mon) fuses to base stats 75, 70, 65, 60, 55, 50: at level 50 with
+// 31 IVs and a neutral nature that is [150, 90, 85, 80, 75, 70]. The numbers below come from the independent
+// reference (tests/fixtures/make-stat-cases.py). The game moves the secondary's items onto the primary on fusion.
+describe("the two Pokémon's items combine when they fuse", () => {
+  const PLAIN = [150, 90, 85, 80, 75, 70];
+  const holding = () => $("#result .holding")?.textContent ?? null;
+  const input = (id: string) => $(`#${id}`) as HTMLInputElement;
+
+  beforeEach(() => {
+    resetCalculator();
+    pick("#primary", "img");
+    pick("#secondary", "safe");
+  });
+
+  it("says nothing about held items while neither Pokémon holds any", () => {
+    expect(holding()).toBeNull();
+    expect(shown()).toEqual(PLAIN);
+  });
+
+  it("lists what the fused Pokémon holds, and clears the list when the boxes are emptied", () => {
+    setNumber("macho-brace", "25");
+    expect(holding()).toBe("Holds after fusing: Macho Brace 25");
+    setNumber("macho-brace", "0");
+    expect(holding()).toBeNull();
+  });
+
+  it("adds both Macho Brace stacks, up to the limit of 50", () => {
+    setNumber("macho-brace", "10");
+    setNumber("secondary-macho-brace", "15");
+    expect(shown()).toEqual([200, 115, 110, 105, 100, 95]); // 25 stacks
+    expect(holding()).toBe("Holds after fusing: Macho Brace 25 (10 + 15)");
+    setNumber("macho-brace", "30");
+    setNumber("secondary-macho-brace", "25");
+    expect(shown()).toEqual([275, 147, 141, 136, 131, 126]); // 50 stacks, with the full-stack bonus
+    expect(holding()).toBe("Holds after fusing: Macho Brace 50 (30 + 25, limit 50)");
+  });
+
+  it("uses the secondary's items even when the primary holds none", () => {
+    setNumber("secondary-macho-brace", "50");
+    expect(shown()).toEqual([275, 147, 141, 136, 131, 126]);
+    expect(holding()).toBe("Holds after fusing: Macho Brace 50 (from the secondary)");
+  });
+
+  it("does not use the secondary's items for the stats it shows before fusing: only the fused result is shown", () => {
+    setNumber("secondary-macho-brace", "50");
+    expect(document.querySelectorAll("#result .stat:not(.labels)")).toHaveLength(6);
+    expect($("#result h2")?.textContent).toBe(fusedSpeciesName(HOSTILE, "Safe Mon"));
+  });
+
+  it("adds Soul Dew stacks and applies them to the nature", () => {
+    pick("#nature", "adamant"); // +Atk, -SpA
+    setNumber("soul-dew", "4");
+    setNumber("secondary-soul-dew", "3");
+    expect(shown()).toEqual([150, 163, 85, 15, 75, 70]); // 7 stacks
+    setNumber("secondary-soul-dew", "10");
+    expect(shown()).toEqual([150, 189, 85, 1, 75, 70]); // 4 + 10 is limited to 10
+  });
+
+  it("adds the vitamins of the same stat and no others", () => {
+    setNumber("vitamin1", "3");
+    setNumber("secondary-vitamin1", "4");
+    setNumber("secondary-vitamin2", "9");
+    // Protein: 3 + 4 = 7 stacks on Atk. Iron: only the secondary's 9 stacks, on Def. HP and the rest are untouched.
+    expect(shown()).toEqual([150, 139, 143, 80, 75, 70]);
+    expect(holding()).toBe("Holds after fusing: Protein 7 (3 + 4); Iron 9 (from the secondary)");
+  });
+
+  it("stops a vitamin at the primary's IV for that stat", () => {
+    setNumber("iv1", "5");
+    setNumber("vitamin1", "5");
+    setNumber("secondary-vitamin1", "20");
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
+    expect(holding()).toBe("Holds after fusing: Protein 5 (5 + 20, limit 5)");
+  });
+
+  // From PlayerPokemon.fuse: with no matching item on the primary the whole stack moves over, so it can pass the primary's IV.
+  it("carries a whole vitamin stack over when the primary holds none, even above its IV", () => {
+    setNumber("iv1", "5");
+    setNumber("secondary-vitamin1", "31");
+    expect(shown()).toEqual([150, 294, 85, 80, 75, 70]);
+    expect(holding()).toBe("Holds after fusing: Protein 31 (from the secondary, above the primary's limit of 5)");
+  });
+
+  it("limits the primary's vitamin boxes to its IV for each stat, and the secondary's to 31", () => {
+    setNumber("iv1", "5");
+    expect(input("vitamin1").max).toBe("5");
+    expect(input("vitamin2").max).toBe("31");
+    expect(input("secondary-vitamin1").max).toBe("31");
+    setNumber("vitamin1", "20");
+    expect(input("vitamin1").value).toBe("5");
+    setNumber("secondary-vitamin1", "20");
+    expect(input("secondary-vitamin1").value).toBe("20");
+  });
+
+  it("holds a typed vitamin count to the IV straight away, before the box loses focus", () => {
+    setNumber("iv1", "5");
+    const box = input("vitamin1");
+    box.value = "20";
+    box.dispatchEvent(new Event("input", { bubbles: true })); // typing, no change event yet
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]); // counted as 5, the IV
+  });
+
+  it("pulls a primary vitamin box down when its IV is lowered afterwards", () => {
+    setNumber("vitamin3", "20");
+    expect(input("vitamin3").value).toBe("20");
+    setNumber("iv3", "8");
+    expect(input("vitamin3").value).toBe("8");
+    expect(input("vitamin3").max).toBe("8");
+    setNumber("iv3", "31");
+    expect(input("vitamin3").max).toBe("31");
+    expect(input("vitamin3").value).toBe("8"); // not restored
+  });
+
+  it("applies Eviolite once if either Pokémon holds it, or both", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "clamperl"); // both can still evolve, every stat 50: plain stats 125, 70, 70, 70, 70, 70
+    tick("secondary-eviolite");
+    expect(arrows()).toEqual([null, null, "→ 105", null, "→ 105", null]);
+    expect(holding()).toBe("Holds after fusing: Eviolite (from the secondary)");
+    tick("eviolite");
+    expect(arrows()).toEqual([null, null, "→ 105", null, "→ 105", null]); // not x1.5 twice
+    expect(holding()).toBe("Holds after fusing: Eviolite");
+  });
+
+  it("applies a species item held by the secondary, since the fused Pokémon is also that species", () => {
+    pick("#primary", "raichu");
+    pick("#secondary", "pikachu (cosplay)");
+    tick("secondary-item-light-ball");
+    expect(arrows()).toEqual([null, "→ 140", null, "→ 140", null, null]);
+    expect(holding()).toBe("Holds after fusing: Light Ball (from the secondary)");
+  });
+});
+
+// Shuckle Juice and Old Gateau change the primary's own base stats before the two Pokémon are averaged.
+// Expected values come from the independent reference (tests/fixtures/make-stat-cases.py, "base" mode).
+describe("Shuckle Juice and Old Gateau change the fused base stats", () => {
+  const holding = () => $("#result .holding")?.textContent ?? null;
+  const fill = (i: number) => (document.querySelectorAll<HTMLElement>("#result .stat:not(.labels) .fill")[i])?.style.getPropertyValue("--pos");
+
+  beforeEach(() => {
+    resetCalculator();
+    pick("#primary", "img");
+    pick("#secondary", "safe");
+  });
+
+  it("Sweet Shuckle Juice raises the primary's base stats", () => {
+    tick("sweet-shuckle-juice");
+    expect(shown()).toEqual([153, 95, 90, 85, 80, 75]);
+    expect(holding()).toBe("Holds after fusing: Sweet Shuckle Juice");
+  });
+
+  it("Foul Shuckle Juice lowers them, and both together net out", () => {
+    tick("foul-shuckle-juice");
+    expect(shown()).toEqual([146, 83, 78, 73, 68, 63]);
+    tick("sweet-shuckle-juice");
+    expect(shown()).toEqual([149, 88, 83, 78, 73, 68]);
+  });
+
+  it("Old Gateau lifts the lower of HP/Spe, Atk/SpA and Def/SpD", () => {
+    tick("old-gateau");
+    expect(shown()).toEqual([150, 90, 85, 90, 85, 80]);
+    expect(holding()).toBe("Holds after fusing: Old Gateau");
+  });
+
+  it("uses the secondary's item, but only the primary's stats decide what it does", () => {
+    tick("secondary-old-gateau");
+    expect(shown()).toEqual([150, 90, 85, 90, 85, 80]);
+    expect(holding()).toBe("Holds after fusing: Old Gateau (from the secondary)");
+    pick("#primary", "safe"); // ties: the later stat of each pair is lifted
+    pick("#secondary", "img");
+    expect(shown()).toEqual([150, 90, 85, 90, 85, 80]);
+  });
+
+  it("stacks with vitamins, which apply to the fused base stat afterwards", () => {
+    tick("sweet-shuckle-juice");
+    setNumber("vitamin1", "10");
+    expect(shown()).toEqual([153, 170, 90, 85, 80, 75]);
+  });
+
+  it("swapping the Pokémon takes the ticked items with them", () => {
+    const box = (id: string) => document.getElementById(id) as HTMLInputElement;
+    const ids = ["sweet-shuckle-juice", "foul-shuckle-juice", "old-gateau"];
+    for (const id of ids) tick(id);
+    ($("#swap") as HTMLElement).click();
+    for (const id of ids) {
+      expect(box(`secondary-${id}`).checked, id).toBe(true);
+      expect(box(id).checked, id).toBe(false);
+    }
+    ($("#swap") as HTMLElement).click();
+    for (const id of ids) {
+      expect(box(id).checked, id).toBe(true);
+      expect(box(`secondary-${id}`).checked, id).toBe(false);
+    }
+  });
+
+  it("keeps the stat bar inside the track when a stat goes past the maximum", () => {
+    pick("#primary", "colossus");
+    pick("#secondary", "colossus");
+    tick("sweet-shuckle-juice");
+    tick("old-gateau");
+    expect(shown()).toEqual([328, 275, 275, 285, 285, 285]);
+    expect(fill(3)).toBe("100%");
   });
 });

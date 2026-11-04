@@ -1,7 +1,10 @@
 import { abilityChoices, type AbilityChoice } from "./abilities.js";
 import { Combobox, normalize, type Choice } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
-import { battleMultiplier, battleStat, clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS, speciesItemsFor } from "./heldItems.js";
+import {
+  battleMultiplier, battleStat, clampCount, fusedItemLines, HELD_ITEM_LIMITS, mergeHeldItems, SPECIES_ITEMS,
+  speciesItemsOf, type HeldItems,
+} from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
@@ -29,30 +32,79 @@ const levelInput = el<HTMLInputElement>("level");
 const passiveToggle = el<HTMLInputElement>("passive-unlocked");
 const abilitySelect = el<HTMLSelectElement>("ability");
 const ivInputs = STAT_NAMES.map((_, i) => el<HTMLInputElement>(`iv${i}`));
-// Held item counts are kept to digits and clamped to the game's stack limits. Vitamins follow the
-// order of the stats (HP Up = HP, Protein = Atk, ...), after Soul Dew and Macho Brace.
-const heldItemInputs = [
-  { input: el<HTMLInputElement>("soul-dew"), max: HELD_ITEM_LIMITS.soulDew },
-  { input: el<HTMLInputElement>("macho-brace"), max: HELD_ITEM_LIMITS.machoBrace },
-  ...STAT_NAMES.map((_, i) => ({ input: el<HTMLInputElement>(`vitamin${i}`), max: HELD_ITEM_LIMITS.vitamin })),
-];
-const evioliteBox = el<HTMLInputElement>("eviolite");
 const result = el<HTMLElement>("result");
-const speciesItemsBox = el<HTMLElement>("species-items");
 
-// One checkbox per species-specific item, built once and shown only while a picked Pokémon can use it.
-const speciesItemRows = new Map<string, { row: HTMLLabelElement; box: HTMLInputElement }>();
-for (const item of SPECIES_ITEMS) {
-  const box = h("input");
-  box.type = "checkbox";
-  box.id = `item-${item.id}`;
-  const text = h("span");
-  text.append(h("b", undefined, item.name), ` ${item.effect}`);
-  const row = h("label", "item-check");
-  row.hidden = true;
-  row.append(box, text);
-  speciesItemRows.set(item.id, { row, box });
-  speciesItemsBox.append(row);
+/** The held item boxes of one Pokémon. The primary Pokémon's ids have no prefix, the secondary's start with "secondary-". */
+interface HeldGroup {
+  soulDew: HTMLInputElement;
+  machoBrace: HTMLInputElement;
+  /** In the order of the stats (HP Up = HP, Protein = Atk, ...). */
+  vitamins: HTMLInputElement[];
+  sweetJuice: HTMLInputElement;
+  foulJuice: HTMLInputElement;
+  oldGateau: HTMLInputElement;
+  eviolite: HTMLInputElement;
+  speciesBox: HTMLElement;
+  species: Map<string, { row: HTMLLabelElement; box: HTMLInputElement }>;
+}
+
+function heldGroup(prefix: string): HeldGroup {
+  const speciesBox = el<HTMLElement>(`${prefix}species-items`);
+  // One checkbox per species-specific item, built once and shown only while this Pokémon can use it.
+  const species = new Map<string, { row: HTMLLabelElement; box: HTMLInputElement }>();
+  for (const item of SPECIES_ITEMS) {
+    const box = h("input");
+    box.type = "checkbox";
+    box.id = `${prefix}item-${item.id}`;
+    const text = h("span");
+    text.append(h("b", undefined, item.name), ` ${item.effect}`);
+    const row = h("label", "item-check");
+    row.hidden = true;
+    row.append(box, text);
+    species.set(item.id, { row, box });
+    speciesBox.append(row);
+  }
+  return {
+    soulDew: el<HTMLInputElement>(`${prefix}soul-dew`),
+    machoBrace: el<HTMLInputElement>(`${prefix}macho-brace`),
+    vitamins: STAT_NAMES.map((_, i) => el<HTMLInputElement>(`${prefix}vitamin${i}`)),
+    sweetJuice: el<HTMLInputElement>(`${prefix}sweet-shuckle-juice`),
+    foulJuice: el<HTMLInputElement>(`${prefix}foul-shuckle-juice`),
+    oldGateau: el<HTMLInputElement>(`${prefix}old-gateau`),
+    eviolite: el<HTMLInputElement>(`${prefix}eviolite`),
+    speciesBox,
+    species,
+  };
+}
+const primaryItems = heldGroup("");
+const secondaryItems = heldGroup("secondary-");
+
+/** The primary Pokémon's IV for a stat, which is also the most vitamins it can hold for it. */
+const primaryIv = (stat: number) => clampIv(Number(ivInputs[stat]?.value));
+const secondaryVitaminLimit = () => HELD_ITEM_LIMITS.vitamin; // the secondary's IVs are not asked for: at most 31
+
+/** Every number box of a group with its limit. Counts are kept to digits and clamped to the game's stack limits. */
+function numberBoxes(group: HeldGroup, vitaminLimit: (stat: number) => number) {
+  return [
+    { input: group.soulDew, limit: () => HELD_ITEM_LIMITS.soulDew },
+    { input: group.machoBrace, limit: () => HELD_ITEM_LIMITS.machoBrace },
+    ...group.vitamins.map((input, i) => ({ input, limit: () => vitaminLimit(i) })),
+  ];
+}
+const heldBoxes = [...numberBoxes(primaryItems, primaryIv), ...numberBoxes(secondaryItems, secondaryVitaminLimit)];
+
+/** What a Pokémon holds according to its boxes, with every count held to its limit. */
+function readHeld(group: HeldGroup, vitaminLimit: (stat: number) => number): HeldItems {
+  return {
+    soulDew: clampCount(Number(group.soulDew.value), HELD_ITEM_LIMITS.soulDew),
+    machoBrace: clampCount(Number(group.machoBrace.value), HELD_ITEM_LIMITS.machoBrace),
+    vitamins: group.vitamins.map((input, i) => clampCount(Number(input.value), vitaminLimit(i))),
+    sweetJuice: group.sweetJuice.checked,
+    foulJuice: group.foulJuice.checked,
+    oldGateau: group.oldGateau.checked,
+    eviolite: group.eviolite.checked,
+    species: [...group.species].filter(([, { box }]) => box.checked).map(([id]) => id),
+  };
 }
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -84,7 +136,8 @@ function restrictToDigits(input: HTMLInputElement): void {
   });
 }
 
-const pct = (v: number) => `${(v / MAX_STAT) * 100}%`;
+// A stat raised past the bar's scale (Old Gateau, Sweet Shuckle Juice) just fills the bar.
+const pct = (v: number) => `${Math.min(100, (v / MAX_STAT) * 100)}%`;
 
 /** Creates an element whose text is set with textContent (never parsed as HTML). */
 function h<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -121,14 +174,46 @@ function syncAbilityOptions(secondary: Pokemon): void {
   abilitySelect.disabled = abilityList.length === 0;
 }
 
-/** Shows the species items that fit the picked pair (either Pokémon can unlock one) and clears the rest. */
-function syncSpeciesItems(primary: Pokemon, secondary: Pokemon): void {
-  const shown = new Set(speciesItemsFor(primary, secondary).map(item => item.id));
-  for (const [id, { row, box }] of speciesItemRows) {
+/** Shows the species items this Pokémon can use itself and clears the rest. */
+function syncSpeciesItems(group: HeldGroup, pokemon: Pokemon): void {
+  const shown = new Set(speciesItemsOf(pokemon).map(item => item.id));
+  for (const [id, { row, box }] of group.species) {
     row.hidden = !shown.has(id);
     if (row.hidden) box.checked = false; // a hidden item must not stay ticked
   }
-  speciesItemsBox.hidden = shown.size === 0;
+  group.speciesBox.hidden = shown.size === 0;
+}
+
+/** Pulls the primary Pokémon's vitamin boxes down to its IVs (after an IV is lowered or items are swapped in). */
+function clampPrimaryVitamins(): void {
+  primaryItems.vitamins.forEach((input, i) => {
+    input.value = String(clampCount(Number(input.value), primaryIv(i)));
+  });
+}
+
+/** Moves each Pokémon's items to the other box set, so they stay with their Pokémon when the two are swapped. */
+function swapHeldItems(): void {
+  const swapValue = (a: HTMLInputElement, b: HTMLInputElement) => {
+    [a.value, b.value] = [b.value, a.value];
+  };
+  const swapChecked = (a: HTMLInputElement, b: HTMLInputElement) => {
+    [a.checked, b.checked] = [b.checked, a.checked];
+  };
+  swapValue(primaryItems.soulDew, secondaryItems.soulDew);
+  swapValue(primaryItems.machoBrace, secondaryItems.machoBrace);
+  primaryItems.vitamins.forEach((input, i) => {
+    const other = secondaryItems.vitamins[i];
+    if (other) swapValue(input, other);
+  });
+  swapChecked(primaryItems.sweetJuice, secondaryItems.sweetJuice);
+  swapChecked(primaryItems.foulJuice, secondaryItems.foulJuice);
+  swapChecked(primaryItems.oldGateau, secondaryItems.oldGateau);
+  swapChecked(primaryItems.eviolite, secondaryItems.eviolite);
+  for (const [id, { box }] of primaryItems.species) {
+    const other = secondaryItems.species.get(id);
+    if (other) swapChecked(box, other.box);
+  }
+  clampPrimaryVitamins();
 }
 
 function render(): void {
@@ -136,24 +221,29 @@ function render(): void {
   const secondary = dex[secondaryBox.index];
   if (!primary || !secondary) return;
   syncAbilityOptions(secondary);
-  syncSpeciesItems(primary, secondary);
-  const f = fuse(primary, secondary);
+  syncSpeciesItems(primaryItems, primary);
+  syncSpeciesItems(secondaryItems, secondary);
   const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
   const level = clampLevel(Number(levelInput.value));
   const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-  const held = heldItemInputs.map(({ input, max }) => clampCount(Number(input.value), max));
-  const [soulDew = 0, machoBrace = 0] = held;
+  // A primary Pokémon can hold at most as many vitamins as its IV for that stat.
+  primaryItems.vitamins.forEach((input, i) => {
+    input.max = String(ivs[i] ?? 0);
+  });
+  const primaryHeld = readHeld(primaryItems, i => ivs[i] ?? 0);
+  const secondaryHeld = readHeld(secondaryItems, secondaryVitaminLimit);
+  // On fusion the game moves everything the secondary holds onto the primary, so that is what the stats use.
+  const held = mergeHeldItems(primaryHeld, secondaryHeld, ivs);
+  // Shuckle Juice and Old Gateau change the primary Pokémon's own base stats before the two are averaged.
+  const f = fuse(primary, secondary, { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau });
   // The permanent stat: base stats, level, IV, nature, vitamins, Soul Dew and Macho Brace.
   const atLevel = f.stats.map((v, i) =>
     statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i), {
-      vitamin: held[2 + i], machoBrace, soulDew,
+      vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew,
     }),
   );
   // Eviolite and species items change the stat only in battle, so they are worked out on top of it.
-  const optional = {
-    eviolite: evioliteBox.checked,
-    species: [...speciesItemRows].filter(([, { box }]) => box.checked).map(([id]) => id),
-  };
+  const optional = { eviolite: held.eviolite, species: held.species };
   const inBattle = atLevel.map((v, i) => battleStat(v, battleMultiplier(i, primary, secondary, optional)));
   const boosted = inBattle.some((v, i) => v !== atLevel[i]);
 
@@ -189,6 +279,10 @@ function render(): void {
   passiveLine.append(h("b", undefined, "Passive: "), primary.passive);
   const abilities = h("div", "abilities");
   abilities.append(abilityLine, ...(passiveToggle.checked ? [passiveLine] : []));
+  // What the fused Pokémon holds once both Pokémon's items are combined.
+  const heldLines = fusedItemLines(primaryHeld, secondaryHeld, held, ivs);
+  const holding = h("div", "holding");
+  holding.append(h("b", undefined, "Holds after fusing: "), heldLines.join("; "));
   const labels = h("div", "stat labels");
   labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
   const legend = h("div", "legend");
@@ -204,6 +298,7 @@ function render(): void {
     h("div", "parents", `${primary.name} + ${secondary.name}`),
     types,
     abilities,
+    ...(heldLines.length > 0 ? [holding] : []),
     labels,
     ...rows,
     h("div", "total", total),
@@ -228,6 +323,7 @@ async function init(): Promise<void> {
     input.oninput = render;
     input.onchange = () => {
       input.value = String(clampIv(Number(input.value)));
+      clampPrimaryVitamins();
       render();
     };
   }
@@ -241,6 +337,7 @@ async function init(): Promise<void> {
     if (a < 0 || b < 0) return;
     primaryBox.setIndex(b);
     secondaryBox.setIndex(a);
+    swapHeldItems();
     render();
   };
   render();
@@ -248,16 +345,18 @@ async function init(): Promise<void> {
 
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs]) restrictToDigits(input);
-for (const { input, max } of heldItemInputs) {
+for (const { input, limit } of heldBoxes) {
   restrictToDigits(input);
   input.oninput = render;
   input.onchange = () => {
-    input.value = String(clampCount(Number(input.value), max));
+    input.value = String(clampCount(Number(input.value), limit()));
     render();
   };
 }
-evioliteBox.addEventListener("change", render);
-for (const { box } of speciesItemRows.values()) box.addEventListener("change", render);
+for (const group of [primaryItems, secondaryItems]) {
+  for (const box of [group.sweetJuice, group.foulJuice, group.oldGateau, group.eviolite]) box.addEventListener("change", render);
+  for (const { box } of group.species.values()) box.addEventListener("change", render);
+}
 passiveToggle.addEventListener("change", render);
 abilitySelect.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);

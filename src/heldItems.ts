@@ -11,6 +11,26 @@ export const HELD_ITEM_LIMITS = {
   vitamin: MAX_IV,
 } as const;
 
+/** Everything one Pokémon holds that the calculator knows about. */
+export interface HeldItems {
+  soulDew: number;
+  machoBrace: number;
+  /** One stack count per stat, in STAT_NAMES order (HP Up, Protein, Iron, Calcium, Zinc, Carbos). */
+  vitamins: number[];
+  /**
+   * Sweet and Foul Shuckle Juice and Old Gateau only matter by being held at all: the game applies each once
+   * however many stacks there are (Shuckle Juice allows two, Old Gateau one).
+   */
+  sweetJuice: boolean;
+  foulJuice: boolean;
+  oldGateau: boolean;
+  eviolite: boolean;
+  /** Ids of the ticked species items. */
+  species: string[];
+}
+
+export const VITAMIN_NAMES = ["HP Up", "Protein", "Iron", "Calcium", "Zinc", "Carbos"] as const;
+
 /** Keeps a typed stack count a whole number from 0 up to `max`. Anything unreadable becomes 0. */
 export function clampCount(value: number, max: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -98,4 +118,74 @@ export function battleMultiplier(statIndex: number, primary: Pokemon, secondary:
 /** The permanent stat with the in-battle multiplier applied, rounded down and never below 1. */
 export function battleStat(permanent: number, multiplier: number): number {
   return Math.max(Math.floor(permanent * multiplier), 1);
+}
+
+/** The species items one Pokémon can use itself (its species or one of its forms is on the item's list). */
+export function speciesItemsOf(pokemon: Pokemon): SpeciesItem[] {
+  return SPECIES_ITEMS.filter(item => matchesSpecies(pokemon.name, item.species));
+}
+
+/**
+ * The stack a Pokémon ends up with when another Pokémon's stack of the same item is fused into it, following
+ * PokeRogue's PlayerPokemon.fuse and BattleScene.tryTransferHeldItemModifier:
+ * - If it holds none of the item, the whole stack moves over. That stack is not checked against this Pokémon's
+ *   own limit, which only matters for vitamins (their limit is the holder's IV).
+ * - If it already holds the item, the stacks add up to the limit, and a full stack takes nothing.
+ */
+export function mergeStacks(own: number, other: number, max: number): number {
+  if (own === 0) return other;
+  if (own >= max) return own;
+  return Math.min(own + other, max);
+}
+
+/**
+ * What the fused Pokémon holds: the primary Pokémon's items plus everything the secondary held, which the game
+ * moves onto the primary when they fuse. `ivs` are the primary Pokémon's, since they set its vitamin limits.
+ */
+export function mergeHeldItems(primary: HeldItems, secondary: HeldItems, ivs: readonly number[]): HeldItems {
+  return {
+    soulDew: mergeStacks(primary.soulDew, secondary.soulDew, SOUL_DEW_MAX),
+    machoBrace: mergeStacks(primary.machoBrace, secondary.machoBrace, MACHO_BRACE_MAX),
+    vitamins: primary.vitamins.map((own, i) => mergeStacks(own, secondary.vitamins[i] ?? 0, ivs[i] ?? 0)),
+    // With a stack of any size on either Pokémon, the fused one holds the item, and one is as good as two.
+    sweetJuice: primary.sweetJuice || secondary.sweetJuice,
+    foulJuice: primary.foulJuice || secondary.foulJuice,
+    oldGateau: primary.oldGateau || secondary.oldGateau,
+    eviolite: primary.eviolite || secondary.eviolite,
+    species: SPECIES_ITEMS.map(item => item.id).filter(id => primary.species.includes(id) || secondary.species.includes(id)),
+  };
+}
+
+/** One line per item the fused Pokémon holds, saying where it came from when the two Pokémon both mattered. */
+export function fusedItemLines(
+  primary: HeldItems,
+  secondary: HeldItems,
+  merged: HeldItems,
+  ivs: readonly number[],
+): string[] {
+  const lines: string[] = [];
+  const stack = (name: string, own: number, other: number, total: number, max: number) => {
+    if (total === 0) return;
+    let note = "";
+    if (own > 0 && other > 0) note = total < own + other ? ` (${own} + ${other}, limit ${max})` : ` (${own} + ${other})`;
+    else if (own === 0 && other > max) note = ` (from the secondary, above the primary's limit of ${max})`;
+    else if (own === 0) note = " (from the secondary)";
+    lines.push(`${name} ${total}${note}`);
+  };
+  stack("Soul Dew", primary.soulDew, secondary.soulDew, merged.soulDew, SOUL_DEW_MAX);
+  stack("Macho Brace", primary.machoBrace, secondary.machoBrace, merged.machoBrace, MACHO_BRACE_MAX);
+  VITAMIN_NAMES.forEach((name, i) => {
+    stack(name, primary.vitamins[i] ?? 0, secondary.vitamins[i] ?? 0, merged.vitamins[i] ?? 0, ivs[i] ?? 0);
+  });
+  const single = (name: string, own: boolean, other: boolean) => {
+    if (own || other) lines.push(own ? name : `${name} (from the secondary)`);
+  };
+  single("Sweet Shuckle Juice", primary.sweetJuice, secondary.sweetJuice);
+  single("Foul Shuckle Juice", primary.foulJuice, secondary.foulJuice);
+  single("Old Gateau", primary.oldGateau, secondary.oldGateau);
+  single("Eviolite", primary.eviolite, secondary.eviolite);
+  for (const item of SPECIES_ITEMS) {
+    single(item.name, primary.species.includes(item.id), secondary.species.includes(item.id));
+  }
+  return lines;
 }
