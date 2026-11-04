@@ -71,6 +71,27 @@
     </fieldset>
   </section>
 
+  <section class="itemrow">
+    <fieldset>
+      <legend>Held items of the primary Pokémon</legend>
+      <label class="wide">Soul Dew (0 to 10)<input id="soul-dew" type="number" min="0" max="10" step="1" value="0" inputmode="numeric"></label>
+      <label class="wide">Macho Brace (0 to 50)<input id="macho-brace" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Vitamins (0 to 31; in the game, up to that stat's IV)</span>
+      <label>HP Up<input id="vitamin0" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Protein<input id="vitamin1" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Iron<input id="vitamin2" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Calcium<input id="vitamin3" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Zinc<input id="vitamin4" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Carbos<input id="vitamin5" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Other items</span>
+      <label class="item-check"><input id="eviolite" type="checkbox"><span><b>Eviolite</b> boosts Def and Sp. Def when the Pokémon can still evolve. No effect on Gigantamaxed Pokémon.</span></label>
+      <div id="species-items" class="species-items" hidden>
+        <span class="subhead">Items for the picked Pokémon</span>
+      </div>
+      <p class="hint">These boxes are inputs only for now. They do not change the results yet.</p>
+    </fieldset>
+  </section>
+
   <section id="result" aria-live="polite"></section>
 
   <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's. The fused name is made with PokeRogue's own naming rule: the start of the primary Pokémon's name joined to the end of the secondary's.</p>

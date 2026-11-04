@@ -1,6 +1,7 @@
 import { abilityChoices } from "./abilities.js";
 import { Combobox, normalize } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
+import { clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS, speciesItemsFor } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES } from "./types.js";
@@ -26,7 +27,30 @@ const levelInput = el("level");
 const passiveToggle = el("passive-unlocked");
 const abilitySelect = el("ability");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
+// Held items are inputs only for now: nothing below reads these values yet. They are kept to digits
+// and clamped to the game's stack limits, in the same order as the stats (HP Up = HP, Protein = Atk, ...).
+const heldItemInputs = [
+    { input: el("soul-dew"), max: HELD_ITEM_LIMITS.soulDew },
+    { input: el("macho-brace"), max: HELD_ITEM_LIMITS.machoBrace },
+    ...STAT_NAMES.map((_, i) => ({ input: el(`vitamin${i}`), max: HELD_ITEM_LIMITS.vitamin })),
+];
 const result = el("result");
+const speciesItemsBox = el("species-items");
+// One checkbox per species-specific item, built once and shown only while a picked Pokémon can use it.
+// Like the other held items they are inputs only for now: nothing reads them yet.
+const speciesItemRows = new Map();
+for (const item of SPECIES_ITEMS) {
+    const box = h("input");
+    box.type = "checkbox";
+    box.id = `item-${item.id}`;
+    const text = h("span");
+    text.append(h("b", undefined, item.name), ` ${item.effect}`);
+    const row = h("label", "item-check");
+    row.hidden = true;
+    row.append(box, text);
+    speciesItemRows.set(item.id, { row, box });
+    speciesItemsBox.append(row);
+}
 const fmt = (n) => n.toLocaleString("en-US");
 const natureChoices = NATURES.map(n => ({ label: natureLabel(n), text: normalize(natureLabel(n)) }));
 const CONTROL_KEYS = new Set([
@@ -89,12 +113,23 @@ function syncAbilityOptions(secondary) {
     abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
     abilitySelect.disabled = abilityList.length === 0;
 }
+/** Shows the species items that fit the picked pair (either Pokémon can unlock one) and clears the rest. */
+function syncSpeciesItems(primary, secondary) {
+    const shown = new Set(speciesItemsFor(primary, secondary).map(item => item.id));
+    for (const [id, { row, box }] of speciesItemRows) {
+        row.hidden = !shown.has(id);
+        if (row.hidden)
+            box.checked = false; // a hidden item must not stay ticked
+    }
+    speciesItemsBox.hidden = shown.size === 0;
+}
 function render() {
     const primary = dex[primaryBox.index];
     const secondary = dex[secondaryBox.index];
     if (!primary || !secondary)
         return;
     syncAbilityOptions(secondary);
+    syncSpeciesItems(primary, secondary);
     const f = fuse(primary, secondary);
     const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
     const level = clampLevel(Number(levelInput.value));
@@ -172,6 +207,12 @@ async function init() {
 // Attach key blocking immediately, even if the data file fails to load.
 for (const input of [levelInput, ...ivInputs])
     restrictToDigits(input);
+for (const { input, max } of heldItemInputs) {
+    restrictToDigits(input);
+    input.onchange = () => {
+        input.value = String(clampCount(Number(input.value), max));
+    };
+}
 passiveToggle.addEventListener("change", render);
 abilitySelect.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);
