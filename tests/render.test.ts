@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fusedSpeciesName } from "../src/fusionName.js";
 
 // A name full of characters that would break or inject markup if it were ever treated as HTML.
@@ -12,16 +12,55 @@ const HOSTILE_PASSIVE = `Passive <b>A</b> & <img src=x>`;
 const HOSTILE_ABILITY = `Ability <i>A</i> & <img src=x>`;
 
 const dex = [
-  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null }, fusionName: HOSTILE },
-  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" }, fusionName: "Safe Mon" },
-  { name: "Pikachu (Cosplay)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Pikachu (Cosplay)" },
-  { name: "Raichu", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Raichu" },
-  { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto" },
-  { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak" },
-  { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl" },
+  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null }, fusionName: HOSTILE, canEvolve: true, isMax: false },
+  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" }, fusionName: "Safe Mon", canEvolve: false, isMax: false },
+  { name: "Pikachu (Cosplay)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Pikachu (Cosplay)", canEvolve: true, isMax: false },
+  { name: "Raichu", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Raichu", canEvolve: false, isMax: false },
+  { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto", canEvolve: false, isMax: false },
+  { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false },
+  { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
+  { name: "Gmax Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
+
+/** Picks a Pokémon (or nature) by typing part of its name into a combo box and pressing Enter. */
+const pick = (selector: string, text: string) => {
+  const input = $(selector) as HTMLInputElement;
+  input.dispatchEvent(new Event("focus"));
+  input.value = text;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
+};
+const setNumber = (id: string, value: string) => {
+  const input = $(`#${id}`) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+};
+const tick = (id: string, on = true) => {
+  const box = $(`#${id}`) as HTMLInputElement;
+  box.checked = on;
+  box.dispatchEvent(new Event("change", { bubbles: true }));
+};
+const statCells = () => [...document.querySelectorAll<HTMLElement>("#result .stat:not(.labels) .lvl")];
+/** The six stats as shown (HP first), without the in-battle arrows. */
+const shown = () => statCells().map(c => Number((c.firstChild?.textContent ?? "").replace(/,/g, "")));
+/** The in-battle arrow text of each stat, or null where there is none. */
+const arrows = () => statCells().map(c => c.querySelector(".battle")?.textContent ?? null);
+const totalLine = () => $("#result .total")?.textContent;
+/** Back to level 50, 31 IVs, a neutral nature, no held items and nothing ticked (earlier groups leave things changed). */
+const resetCalculator = () => {
+  setNumber("level", "50");
+  for (let i = 0; i < 6; i++) {
+    setNumber(`iv${i}`, "31");
+    setNumber(`vitamin${i}`, "0");
+  }
+  setNumber("soul-dew", "0");
+  setNumber("macho-brace", "0");
+  pick("#nature", "hardy");
+  for (const box of document.querySelectorAll<HTMLInputElement>("#eviolite, #species-items input")) tick(box.id, false);
+};
 
 beforeAll(async () => {
   // Load the real page structure (without its script tag), serve a fake dex, then start the app.
@@ -212,7 +251,7 @@ describe("fused name", () => {
   });
 });
 
-describe("held items (inputs only for now)", () => {
+describe("held item boxes", () => {
   const input = (id: string) => $(`#${id}`) as HTMLInputElement;
   const ids = ["soul-dew", "macho-brace", "vitamin0", "vitamin1", "vitamin2", "vitamin3", "vitamin4", "vitamin5"];
   const maxes = [10, 50, 31, 31, 31, 31, 31, 31];
@@ -237,8 +276,10 @@ describe("held items (inputs only for now)", () => {
     expect(labels).toEqual(["HP Up", "Protein", "Iron", "Calcium", "Zinc", "Carbos"]);
   });
 
-  it("says plainly that they do not change the results yet", () => {
-    expect($(".itemrow .hint")?.textContent).toContain("do not change the results yet");
+  it("explains what each kind of item changes", () => {
+    const hint = $(".itemrow .hint")?.textContent ?? "";
+    expect(hint).toContain("Vitamins, Soul Dew and Macho Brace change the stat shown");
+    expect(hint).toContain("only apply in battle");
   });
 
   it("pulls too-large, negative, empty and fractional entries back into range", () => {
@@ -266,31 +307,85 @@ describe("held items (inputs only for now)", () => {
     for (const key of ["e", "-", "+", "."]) expect(press(key), key).toBe(true);
   });
 
-  it("leaves the results card exactly as it was, whatever is entered", () => {
-    const before = $("#result")?.textContent;
-    for (const [i, id] of ids.entries()) change(id, String(maxes[i]));
-    expect($("#result")?.textContent).toBe(before);
+  it("puts every box back to 0 afterwards", () => {
     for (const id of ids) change(id, "0");
-    expect($("#result")?.textContent).toBe(before);
+    for (const id of ids) expect(input(id).value, id).toBe("0");
   });
 });
 
-describe("Eviolite and species items (inputs only for now)", () => {
+// The default pair is the hostile Pokémon + Safe Mon: fused base stats 75, 70, 65, 60, 55, 50 at level 50
+// with 31 IVs and a neutral nature. The expected numbers come from an independent port of the game's formula
+// (tests/fixtures/make-stat-cases.py).
+describe("held items change the stats shown", () => {
+  const PLAIN = [150, 90, 85, 80, 75, 70];
+  const NO_ARROWS = [null, null, null, null, null, null];
+  const vitamins = [0, 1, 2, 3, 4, 5].map(i => `vitamin${i}`);
+
+  beforeEach(resetCalculator);
+
+  it("shows the plain stats while every box is empty", () => {
+    expect(shown()).toEqual(PLAIN);
+    expect(arrows()).toEqual(NO_ARROWS);
+    expect(totalLine()).toBe("Total at Lv 50: 550");
+  });
+
+  it("adds Macho Brace to every stat, with its 50-stack bonus", () => {
+    setNumber("macho-brace", "50");
+    expect(shown()).toEqual([275, 147, 141, 136, 131, 126]);
+    expect(totalLine()).toBe("Total at Lv 50: 956");
+  });
+
+  it("raises each stat with its own vitamin", () => {
+    for (const id of vitamins) setNumber(id, "10");
+    expect(shown()).toEqual([225, 160, 150, 140, 130, 120]);
+    for (const id of vitamins) setNumber(id, "0");
+    setNumber("vitamin0", "31");
+    expect(shown()).toEqual([382, 90, 85, 80, 75, 70]);
+  });
+
+  it("stops counting a vitamin beyond that stat's IV", () => {
+    setNumber("iv1", "5");
+    setNumber("vitamin1", "31");
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
+    setNumber("vitamin1", "5");
+    expect(shown()).toEqual([150, 112, 85, 80, 75, 70]);
+  });
+
+  it("widens the nature with Soul Dew, but only for a stat the nature touches", () => {
+    pick("#nature", "adamant"); // +Atk, -SpA
+    expect(shown()).toEqual([150, 100, 85, 72, 75, 70]);
+    setNumber("soul-dew", "5");
+    expect(shown()).toEqual([150, 144, 85, 32, 75, 70]);
+    setNumber("soul-dew", "10");
+    expect(shown()).toEqual([150, 189, 85, 1, 75, 70]);
+    pick("#nature", "hardy");
+    expect(shown()).toEqual(PLAIN);
+  });
+
+  it("updates as the number is typed, before the box loses focus", () => {
+    const box = $("#macho-brace") as HTMLInputElement;
+    box.value = "50";
+    box.dispatchEvent(new Event("input", { bubbles: true }));
+    expect(shown()).toEqual([275, 147, 141, 136, 131, 126]);
+  });
+
+  it("uses the limit when the typed number is too large", () => {
+    setNumber("macho-brace", "75");
+    expect(shown()).toEqual([275, 147, 141, 136, 131, 126]);
+  });
+
+  it("does not show an in-battle arrow for these items, since they are part of the stat itself", () => {
+    setNumber("macho-brace", "50");
+    for (const id of vitamins) setNumber(id, "10");
+    expect(arrows()).toEqual(NO_ARROWS);
+  });
+});
+
+describe("Eviolite and species items", () => {
   const box = (id: string) => $(`#${id}`) as HTMLInputElement;
-  const pick = (selector: string, text: string) => {
-    const input = $(selector) as HTMLInputElement;
-    input.dispatchEvent(new Event("focus"));
-    input.value = text;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
-  };
   const visibleSpecies = () =>
     [...document.querySelectorAll<HTMLLabelElement>("#species-items label")].filter(l => !l.hidden).map(l => l.querySelector("b")?.textContent);
   const section = () => $("#species-items") as HTMLElement;
-  const tick = (id: string, on = true) => {
-    box(id).checked = on;
-    box(id).dispatchEvent(new Event("change", { bubbles: true }));
-  };
 
   it("always shows Eviolite, unticked, with its Gigantamax note", () => {
     expect(box("eviolite").type).toBe("checkbox");
@@ -357,15 +452,111 @@ describe("Eviolite and species items (inputs only for now)", () => {
     expect(box("eviolite").checked).toBe(true);
   });
 
-  it("leaves the results card exactly as it was, whatever is ticked", () => {
-    pick("#primary", "pikachu");
-    pick("#secondary", "ditto");
-    const before = $("#result")?.textContent;
-    for (const id of ["eviolite", "item-light-ball", "item-metal-powder", "item-quick-powder"]) tick(id);
-    expect($("#result")?.textContent).toBe(before);
-    for (const id of ["eviolite", "item-light-ball", "item-metal-powder", "item-quick-powder"]) tick(id, false);
-    expect($("#result")?.textContent).toBe(before);
+  it("puts the default pair back for the next group", () => {
+    tick("eviolite", false);
     pick("#primary", "img");
     pick("#secondary", "safe");
+    expect(visibleSpecies()).toEqual([]);
+  });
+});
+
+// Every Pokémon in this group has base stats of 50, so at level 50 with 31 IVs the fused stats are
+// [125, 70, 70, 70, 70, 70] (total 475). Eviolite and species items work on top of that in battle.
+describe("Eviolite and species items change the in-battle stats", () => {
+  const PLAIN = [125, 70, 70, 70, 70, 70];
+  const NO_ARROWS = [null, null, null, null, null, null];
+
+  beforeEach(resetCalculator);
+
+  it("gives Eviolite's full boost (x1.5) when both Pokémon can still evolve", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "clamperl");
+    expect(arrows()).toEqual(NO_ARROWS);
+    tick("eviolite");
+    expect(shown()).toEqual(PLAIN); // the stat itself does not change
+    expect(arrows()).toEqual([null, null, "\u2192 105", null, "\u2192 105", null]);
+    expect(totalLine()).toBe("Total at Lv 50: 475 (545 in battle)");
+    expect($("#result .legend")?.textContent).toContain("An arrow shows the in-battle value");
+  });
+
+  it("gives half the boost (x1.25) when only one of them can", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "ditto");
+    tick("eviolite");
+    expect(arrows()).toEqual([null, null, "\u2192 87", null, "\u2192 87", null]);
+    pick("#primary", "ditto");
+    pick("#secondary", "pikachu (cosplay)");
+    expect(arrows()).toEqual([null, null, "\u2192 87", null, "\u2192 87", null]);
+  });
+
+  it("gives nothing when neither can evolve", () => {
+    pick("#primary", "raichu");
+    pick("#secondary", "ditto");
+    tick("eviolite");
+    expect(arrows()).toEqual(NO_ARROWS);
+    expect(totalLine()).toBe("Total at Lv 50: 475");
+    expect($("#result .legend")?.textContent).not.toContain("arrow");
+  });
+
+  it("gives nothing when either Pokémon is a Gigantamax form", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "gmax");
+    tick("eviolite");
+    expect(arrows()).toEqual(NO_ARROWS);
+    pick("#primary", "gmax");
+    pick("#secondary", "pikachu (cosplay)");
+    expect(arrows()).toEqual(NO_ARROWS);
+  });
+
+  it("doubles the stats of a ticked species item", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "raichu");
+    tick("item-light-ball");
+    expect(shown()).toEqual(PLAIN);
+    expect(arrows()).toEqual([null, "\u2192 140", null, "\u2192 140", null, null]);
+    tick("item-light-ball", false);
+    expect(arrows()).toEqual(NO_ARROWS);
+
+    pick("#primary", "raichu");
+    pick("#secondary", "ditto");
+    tick("item-metal-powder");
+    expect(arrows()).toEqual([null, null, "\u2192 140", null, null, null]);
+    tick("item-quick-powder");
+    expect(arrows()).toEqual([null, null, "\u2192 140", null, null, "\u2192 140"]);
+  });
+
+  it("stacks items that boost the same stat, Eviolite included", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "clamperl");
+    for (const id of ["eviolite", "item-light-ball", "item-deep-sea-tooth", "item-deep-sea-scale"]) tick(id);
+    // Atk x2 (Light Ball), Def x1.5 (Eviolite), SpA x4 (Light Ball and Deep Sea Tooth), SpD x3 (Eviolite and Deep Sea Scale)
+    expect(arrows()).toEqual([null, "\u2192 140", "\u2192 105", "\u2192 280", "\u2192 210", null]);
+    expect(totalLine()).toBe("Total at Lv 50: 475 (930 in battle)");
+  });
+
+  it("works on top of the stat with Macho Brace already added", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "clamperl");
+    setNumber("macho-brace", "50");
+    tick("eviolite");
+    expect(shown()).toEqual([247, 126, 126, 126, 126, 126]);
+    expect(arrows()).toEqual([null, null, "\u2192 189", null, "\u2192 189", null]);
+  });
+
+  it("drops the arrow as soon as the item no longer applies to the picked pair", () => {
+    pick("#primary", "pikachu (cosplay)");
+    pick("#secondary", "raichu");
+    tick("item-light-ball");
+    expect(arrows()).toEqual([null, "\u2192 140", null, "\u2192 140", null, null]);
+    pick("#primary", "raichu");
+    expect(arrows()).toEqual(NO_ARROWS);
+    pick("#primary", "pikachu (cosplay)");
+    expect(arrows()).toEqual(NO_ARROWS); // the item was cleared, not just hidden
+  });
+
+  it("puts the default pair back", () => {
+    pick("#primary", "img");
+    pick("#secondary", "safe");
+    expect(shown()).toEqual([150, 90, 85, 80, 75, 70]);
   });
 });

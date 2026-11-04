@@ -84,17 +84,17 @@
       <label>Zinc<input id="vitamin4" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <label>Carbos<input id="vitamin5" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
       <span class="subhead">Other items</span>
-      <label class="item-check"><input id="eviolite" type="checkbox"><span><b>Eviolite</b> boosts Def and Sp. Def when the Pokémon can still evolve. No effect on Gigantamaxed Pokémon.</span></label>
+      <label class="item-check"><input id="eviolite" type="checkbox"><span><b>Eviolite</b> boosts Def and Sp. Def by half when the Pokémon can still evolve. For a fusion the full boost needs both Pokémon to be able to evolve, and only half of it applies if just one can. No effect on Gigantamaxed Pokémon.</span></label>
       <div id="species-items" class="species-items" hidden>
         <span class="subhead">Items for the picked Pokémon</span>
       </div>
-      <p class="hint">These boxes are inputs only for now. They do not change the results yet.</p>
+      <p class="hint">Vitamins, Soul Dew and Macho Brace change the stat shown. Vitamins count up to the stat's IV. Eviolite and the species items only apply in battle, so they add an arrow with the in-battle value.</p>
     </fieldset>
   </section>
 
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's. The fused name is made with PokeRogue's own naming rule: the start of the primary Pokémon's name joined to the end of the secondary's.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs, nature and held items. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's. The fused name is made with PokeRogue's own naming rule: the start of the primary Pokémon's name joined to the end of the secondary's.</p>
   <p class="note">Free software under the <a href="https://github.com/SergioSimental/pokerogue-splicing-calculator/blob/main/LICENSE" rel="noopener">GNU AGPL-3.0</a>. <a href="https://github.com/SergioSimental/pokerogue-splicing-calculator" rel="noopener">Source code</a>.</p>
 </main>
 <script type="module" src="dist/main.js"></script>

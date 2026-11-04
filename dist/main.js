@@ -1,7 +1,7 @@
 import { abilityChoices } from "./abilities.js";
 import { Combobox, normalize } from "./ui/combobox.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
-import { clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS, speciesItemsFor } from "./heldItems.js";
+import { battleMultiplier, battleStat, clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS, speciesItemsFor } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { STAT_NAMES } from "./types.js";
@@ -27,17 +27,17 @@ const levelInput = el("level");
 const passiveToggle = el("passive-unlocked");
 const abilitySelect = el("ability");
 const ivInputs = STAT_NAMES.map((_, i) => el(`iv${i}`));
-// Held items are inputs only for now: nothing below reads these values yet. They are kept to digits
-// and clamped to the game's stack limits, in the same order as the stats (HP Up = HP, Protein = Atk, ...).
+// Held item counts are kept to digits and clamped to the game's stack limits. Vitamins follow the
+// order of the stats (HP Up = HP, Protein = Atk, ...), after Soul Dew and Macho Brace.
 const heldItemInputs = [
     { input: el("soul-dew"), max: HELD_ITEM_LIMITS.soulDew },
     { input: el("macho-brace"), max: HELD_ITEM_LIMITS.machoBrace },
     ...STAT_NAMES.map((_, i) => ({ input: el(`vitamin${i}`), max: HELD_ITEM_LIMITS.vitamin })),
 ];
+const evioliteBox = el("eviolite");
 const result = el("result");
 const speciesItemsBox = el("species-items");
 // One checkbox per species-specific item, built once and shown only while a picked Pokémon can use it.
-// Like the other held items they are inputs only for now: nothing reads them yet.
 const speciesItemRows = new Map();
 for (const item of SPECIES_ITEMS) {
     const box = h("input");
@@ -134,7 +134,19 @@ function render() {
     const fusedName = fusedSpeciesName(primary.fusionName, secondary.fusionName);
     const level = clampLevel(Number(levelInput.value));
     const ivs = ivInputs.map(input => clampIv(Number(input.value)));
-    const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i)));
+    const held = heldItemInputs.map(({ input, max }) => clampCount(Number(input.value), max));
+    const [soulDew = 0, machoBrace = 0] = held;
+    // The permanent stat: base stats, level, IV, nature, vitamins, Soul Dew and Macho Brace.
+    const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i), {
+        vitamin: held[2 + i], machoBrace, soulDew,
+    }));
+    // Eviolite and species items change the stat only in battle, so they are worked out on top of it.
+    const optional = {
+        eviolite: evioliteBox.checked,
+        species: [...speciesItemRows].filter(([, { box }]) => box.checked).map(([id]) => id),
+    };
+    const inBattle = atLevel.map((v, i) => battleStat(v, battleMultiplier(i, primary, secondary, optional)));
+    const boosted = inBattle.some((v, i) => v !== atLevel[i]);
     const rows = STAT_NAMES.map((name, i) => {
         const p = primary.stats[i] ?? 0, s = secondary.stats[i] ?? 0, v = f.stats[i] ?? 0;
         const fill = h("div", "fill");
@@ -142,7 +154,13 @@ function render() {
         const track = h("div", "track");
         track.append(fill, marker("tick p", `${primary.name}: ${p}`, pct(p)), marker("tick s", `${secondary.name}: ${s}`, pct(s)));
         const row = h("div", "stat");
-        row.append(h("span", undefined, name), track, h("span", "lvl", fmt(atLevel[i] ?? 0)));
+        const value = h("span", "lvl", fmt(atLevel[i] ?? 0));
+        if (inBattle[i] !== atLevel[i]) {
+            const battle = h("span", "battle", `\u2192 ${fmt(inBattle[i] ?? 0)}`);
+            battle.title = "Value in battle with Eviolite or a species item";
+            value.append(battle);
+        }
+        row.append(h("span", undefined, name), track, value);
         return row;
     });
     const types = h("div", "types");
@@ -164,8 +182,13 @@ function render() {
     labels.append(h("span"), h("span"), h("span", "lvl", `Lv ${fmt(level)}`));
     const legend = h("div", "legend");
     legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
+    if (boosted)
+        legend.append(" An arrow shows the in-battle value with Eviolite or a species item.");
+    const totalAtLevel = atLevel.reduce((x, y) => x + y, 0);
+    const totalInBattle = inBattle.reduce((x, y) => x + y, 0);
+    const total = `Total at Lv ${fmt(level)}: ${fmt(totalAtLevel)}${boosted ? ` (${fmt(totalInBattle)} in battle)` : ""}`;
     // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
-    result.replaceChildren(h("h2", undefined, fusedName), h("div", "parents", `${primary.name} + ${secondary.name}`), types, abilities, labels, ...rows, h("div", "total", `Total at Lv ${fmt(level)}: ${fmt(atLevel.reduce((x, y) => x + y, 0))}`), legend);
+    result.replaceChildren(h("h2", undefined, fusedName), h("div", "parents", `${primary.name} + ${secondary.name}`), types, abilities, labels, ...rows, h("div", "total", total), legend);
 }
 async function init() {
     try {
@@ -209,10 +232,15 @@ for (const input of [levelInput, ...ivInputs])
     restrictToDigits(input);
 for (const { input, max } of heldItemInputs) {
     restrictToDigits(input);
+    input.oninput = render;
     input.onchange = () => {
         input.value = String(clampCount(Number(input.value), max));
+        render();
     };
 }
+evioliteBox.addEventListener("change", render);
+for (const { box } of speciesItemRows.values())
+    box.addEventListener("change", render);
 passiveToggle.addEventListener("change", render);
 abilitySelect.addEventListener("change", render);
 natureBox.setChoices(natureChoices, 0);

@@ -42,16 +42,19 @@ describe("clampCount", () => {
 
 // ---- species-specific items ----
 import { readFileSync } from "node:fs";
-import { matchesSpecies, SPECIES_ITEMS, speciesItemsFor } from "../src/heldItems.js";
+import { battleMultiplier, battleStat, evioliteMultiplier, matchesSpecies, SPECIES_ITEMS, speciesItemsFor } from "../src/heldItems.js";
 import type { Pokemon } from "../src/types.js";
 
-const mon = (name: string): Pokemon => ({
+const mon = (name: string, extra: Partial<Pokemon> = {}): Pokemon => ({
   name,
   stats: [50, 50, 50, 50, 50, 50],
   types: ["Normal"],
   passive: "Passive",
   abilities: { regular: ["Ability"], hidden: null },
   fusionName: name,
+  canEvolve: false,
+  isMax: false,
+  ...extra,
 });
 const idsFor = (a: string, b: string) => speciesItemsFor(mon(a), mon(b)).map(i => i.id);
 
@@ -134,5 +137,95 @@ describe("speciesItemsFor", () => {
     expect(idsFor("Pikachu", "Ditto")).toEqual(["light-ball", "metal-powder", "quick-powder"]);
     expect(idsFor("Cubone", "Marowak")).toEqual(["thick-club"]);
     expect(idsFor("Ditto", "Clamperl")).toEqual(["deep-sea-tooth", "deep-sea-scale", "metal-powder", "quick-powder"]);
+  });
+});
+
+describe("SPECIES_ITEMS stats", () => {
+  // From SpeciesStatBoosterModifierTypeGenerator.items in PokeRogue's modifier-type.ts (stat indexes: 1 Atk, 2 Def, 3 SpA, 4 SpD, 5 Spe).
+  it("doubles the stats PokeRogue lists for each item", () => {
+    expect(SPECIES_ITEMS.map(i => [i.name, ...i.stats])).toEqual([
+      ["Deep Sea Tooth", 3],
+      ["Deep Sea Scale", 4],
+      ["Light Ball", 1, 3],
+      ["Thick Club", 1],
+      ["Metal Powder", 2],
+      ["Quick Powder", 5],
+    ]);
+  });
+});
+
+describe("evioliteMultiplier", () => {
+  const evolves = mon("Evolves", { canEvolve: true });
+  const done = mon("Done");
+
+  it("gives the full 1.5 when both Pokémon can still evolve", () => {
+    expect(evioliteMultiplier(evolves, mon("Other", { canEvolve: true }))).toBe(1.5);
+  });
+
+  it("gives half the boost (1.25) when only one can, whichever it is", () => {
+    expect(evioliteMultiplier(evolves, done)).toBe(1.25);
+    expect(evioliteMultiplier(done, evolves)).toBe(1.25);
+  });
+
+  it("gives nothing when neither can evolve", () => {
+    expect(evioliteMultiplier(done, mon("Also done"))).toBe(1);
+  });
+
+  it("gives nothing when either Pokémon is a Gigantamax or Eternamax form, even if both can evolve", () => {
+    const max = mon("Max", { canEvolve: true, isMax: true });
+    expect(evioliteMultiplier(max, evolves)).toBe(1);
+    expect(evioliteMultiplier(evolves, max)).toBe(1);
+  });
+});
+
+describe("battleMultiplier", () => {
+  const evolves = mon("Pikachu (Cosplay)", { canEvolve: true });
+  const clamperl = mon("Clamperl", { canEvolve: true });
+  const ditto = mon("Ditto");
+  const none = { eviolite: false, species: [] };
+  const all = (m: (stat: number) => number) => [0, 1, 2, 3, 4, 5].map(m);
+
+  it("is 1 for every stat when nothing is ticked", () => {
+    expect(all(i => battleMultiplier(i, evolves, clamperl, none))).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
+  it("applies Eviolite to Def and Sp. Def only", () => {
+    expect(all(i => battleMultiplier(i, evolves, clamperl, { eviolite: true, species: [] }))).toEqual([1, 1, 1.5, 1, 1.5, 1]);
+    expect(all(i => battleMultiplier(i, evolves, ditto, { eviolite: true, species: [] }))).toEqual([1, 1, 1.25, 1, 1.25, 1]);
+  });
+
+  it("doubles only the stats a ticked species item lists", () => {
+    expect(all(i => battleMultiplier(i, evolves, ditto, { eviolite: false, species: ["light-ball"] }))).toEqual([1, 2, 1, 2, 1, 1]);
+    expect(all(i => battleMultiplier(i, evolves, ditto, { eviolite: false, species: ["metal-powder"] }))).toEqual([1, 1, 2, 1, 1, 1]);
+    expect(all(i => battleMultiplier(i, evolves, ditto, { eviolite: false, species: ["quick-powder"] }))).toEqual([1, 1, 1, 1, 1, 2]);
+  });
+
+  it("stacks items that boost the same stat", () => {
+    // Light Ball and Deep Sea Tooth both double Sp. Atk; Deep Sea Scale and Eviolite both lift Sp. Def.
+    const items = { eviolite: true, species: ["light-ball", "deep-sea-tooth", "deep-sea-scale"] };
+    expect(all(i => battleMultiplier(i, evolves, clamperl, items))).toEqual([1, 2, 1.5, 4, 3, 1]);
+  });
+
+  it("ignores a ticked item that does not apply to the picked pair", () => {
+    expect(all(i => battleMultiplier(i, ditto, mon("Raichu"), { eviolite: false, species: ["light-ball", "thick-club"] }))).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+
+  it("ignores Eviolite when it does nothing for the pair", () => {
+    const max = mon("Max", { canEvolve: true, isMax: true });
+    expect(all(i => battleMultiplier(i, max, clamperl, { eviolite: true, species: [] }))).toEqual([1, 1, 1, 1, 1, 1]);
+  });
+});
+
+describe("battleStat", () => {
+  it("rounds down, as the game does", () => {
+    expect(battleStat(237, 1.5)).toBe(355); // 355.5
+    expect(battleStat(237, 1.25)).toBe(296); // 296.25
+    expect(battleStat(237, 4)).toBe(948);
+  });
+
+  it("leaves the stat alone at a multiplier of 1 and never goes below 1", () => {
+    expect(battleStat(237, 1)).toBe(237);
+    expect(battleStat(1, 1.25)).toBe(1);
+    expect(battleStat(0, 2)).toBe(1);
   });
 });

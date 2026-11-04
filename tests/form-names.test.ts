@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { formName, formTemplateKey, resolveFormKey } from "../scripts/form-names.mjs";
+import { formName, formTemplateKey, isMaxForm, resolveFormKey } from "../scripts/form-names.mjs";
 
 // The templates PokeRogue's English locale (pokemon-form-battle.json) uses, trimmed to what matters.
 const TEMPLATES = {
@@ -73,5 +73,27 @@ describe("formName", () => {
   it("throws, naming the Pokémon, when the template it needs is missing or has no placeholder", () => {
     expect(() => formName("X", "SpeciesFormKey.MEGA_X", {}, "X (Mega X)", vi.fn())).toThrow(/X \(Mega X\).*megaX/);
     expect(() => formName("X", "SpeciesFormKey.MEGA", { mega: "Mega" }, "X (Mega)", vi.fn())).toThrow(/mega/);
+  });
+});
+
+describe("isMaxForm", () => {
+  // The same four form keys PokeRogue's Pokemon.isMax() checks.
+  it("is true for every Gigantamax kind and Eternamax", () => {
+    for (const key of ["GIGANTAMAX", "GIGANTAMAX_SINGLE", "GIGANTAMAX_RAPID", "ETERNAMAX"]) {
+      expect(isMaxForm(`SpeciesFormKey.${key}`), key).toBe(true);
+    }
+    expect(isMaxForm('"gigantamax-single"')).toBe(true);
+  });
+
+  it("is false for the base form, Mega and Primal forms and everything else", () => {
+    expect(isMaxForm(null)).toBe(false);
+    expect(isMaxForm("SpeciesFormKey.MEGA_X")).toBe(false);
+    expect(isMaxForm("SpeciesFormKey.PRIMAL")).toBe(false);
+    expect(isMaxForm('"therian"')).toBe(false);
+  });
+
+  it("is false for a key it does not recognise", () => {
+    expect(isMaxForm("SpeciesFormKey.SOMETHING_NEW")).toBe(false);
+    expect(isMaxForm("someVariable")).toBe(false);
   });
 });

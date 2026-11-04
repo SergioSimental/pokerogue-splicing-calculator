@@ -29,6 +29,13 @@ export interface Pokemon {
    * forms use the plain species name (Alolan Raichu is "Raichu"). Differs from `name`, which is a label.
    */
   fusionName: string;
+  /**
+   * Whether this species still has an evolution (Eviolite only helps those). Forms share their
+   * species' answer: Mega Venusaur is false, Pikachu (Cosplay) is true.
+   */
+  canEvolve: boolean;
+  /** True for Gigantamax and Eternamax forms, which Eviolite does nothing for. */
+  isMax: boolean;
 }
 
 export interface Fusion {

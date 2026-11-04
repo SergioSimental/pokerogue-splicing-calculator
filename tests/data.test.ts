@@ -88,6 +88,43 @@ describe("data/pokemon.json", () => {
     }
   });
 
+  it("says for every entry whether it can evolve and whether it is a Gigantamax or Eternamax form", () => {
+    for (const p of dex) {
+      expect(typeof p.canEvolve, `${p.name} canEvolve`).toBe("boolean");
+      expect(typeof p.isMax, `${p.name} isMax`).toBe("boolean");
+    }
+  });
+
+  it("marks exactly the G-Max and E-Max forms as max", () => {
+    for (const p of dex) expect(p.isMax, p.name).toBe(/^(G|E)-Max /.test(p.fusionName));
+    expect(dex.filter(p => p.isMax).length).toBeGreaterThanOrEqual(30);
+  });
+
+  // Evolution lines almost never change, so a few well-known ones are pinned. A real upstream change
+  // would be a reason to look, not to loosen this.
+  it("knows which well-known Pokémon can still evolve, and gives forms their species' answer", () => {
+    const evolves = (name: string) => dex.find(p => p.name === name)?.canEvolve;
+    for (const name of ["Bulbasaur", "Ivysaur", "Charmander", "Pikachu", "Pikachu (Cosplay)", "Eevee", "Magikarp", "Tyrogue", "Cubone", "Clamperl"]) {
+      expect(evolves(name), name).toBe(true);
+    }
+    for (const name of ["Venusaur", "Venusaur (Mega)", "Charizard", "Raichu", "Gyarados", "Ditto", "Marowak", "Alolan Marowak", "Garchomp", "Blissey"]) {
+      expect(evolves(name), name).toBe(false);
+    }
+  });
+
+  it("keeps the evolve flag for a G-Max form, since Eviolite checks the max form separately", () => {
+    const find = (name: string) => dex.find(p => p.name === name);
+    expect(find("Eevee (G-Max)")).toMatchObject({ canEvolve: true, isMax: true });
+    expect(find("Pikachu (G-Max)")).toMatchObject({ canEvolve: true, isMax: true });
+    expect(find("Venusaur (G-Max)")).toMatchObject({ canEvolve: false, isMax: true });
+  });
+
+  it("has a good share of entries that can evolve", () => {
+    const share = dex.filter(p => p.canEvolve).length / dex.length;
+    expect(share).toBeGreaterThan(0.2);
+    expect(share).toBeLessThan(0.7);
+  });
+
   it("has the right numbers for well-known Pokémon", () => {
     const find = (name: string) => dex.find(p => p.name === name);
     expect(find("Garchomp")).toMatchObject({ stats: [108, 130, 95, 80, 85, 102], types: ["Dragon", "Ground"] });

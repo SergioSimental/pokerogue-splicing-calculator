@@ -28,6 +28,7 @@ button{cursor:pointer;font-size:1.2rem}
 
 .levelrow{margin-top:1rem;max-width:14rem}
 .lvl{text-align:right;font-weight:600}
+.lvl .battle{display:block;font-size:.75rem;font-weight:400;opacity:.8}
 .stat.labels{font-size:.8rem;opacity:.7;margin-bottom:0}
 .stat.labels .lvl{font-weight:400}
 
