@@ -47,7 +47,7 @@ The 25 natures and their order match PokeRogue's `src/data/nature.ts`.
 There is a **Held items** box for each Pokémon, because PokeRogue moves everything the secondary Pokémon holds onto the primary when they fuse, and the results show the fused Pokémon with both sets of items. Everything below was checked against PokeRogue's source (`Pokemon.calculateStats`, `getEffectiveStat`, `PlayerPokemon.fuse`, `BattleScene.tryTransferHeldItemModifier` and the item classes).
 
 **Limits** (the most a Pokémon can hold of each):
-- Vitamins (HP Up, Protein, Iron, Calcium, Zinc, Carbos): as many as the holder's IV for that stat. The fused Pokémon keeps the primary's IVs and the secondary's own IVs are not asked for, so both Pokémon's boxes stop at the primary's IV for each stat.
+- Vitamins (HP Up, Protein, Iron, Calcium, Zinc, Carbos): as many as the holder's IV for that stat. The fused Pokémon keeps the primary's IVs and the secondary's own IVs are not asked for, so both Pokémon's boxes stop at the primary's IV for each stat. (A secondary that really holds more than that can't be entered.)
 - Soul Dew: 10. Macho Brace: 50. Eviolite and each species item: 1.
 
 **What the items do**
