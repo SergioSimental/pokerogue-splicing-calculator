@@ -57,8 +57,9 @@ function heldGroup(prefix: string): HeldGroup {
     box.type = "checkbox";
     box.id = `${prefix}item-${item.id}`;
     const text = h("span");
-    text.append(h("b", undefined, item.name), ` ${item.effect}`);
-    const row = h("label", "item-check");
+    text.append(h("b", undefined, item.name));
+    const row = h("label", "chip");
+    row.title = `${item.name} ${item.effect}`;
     row.hidden = true;
     row.append(box, text);
     species.set(item.id, { row, box });
@@ -78,6 +79,14 @@ function heldGroup(prefix: string): HeldGroup {
 }
 const primaryItems = heldGroup("");
 const secondaryItems = heldGroup("secondary-");
+
+// The help list under the item boxes also describes each species item.
+const helpList = el<HTMLElement>("item-help-list");
+for (const item of SPECIES_ITEMS) {
+  const line = h("li");
+  line.append(h("b", undefined, item.name), ` ${item.effect}, only for ${item.species.join(", ")}.`);
+  helpList.append(line);
+}
 
 /**
  * The primary Pokémon's IV for a stat, which is the most vitamins either Pokémon's box takes for it: the fused
