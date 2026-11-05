@@ -33,6 +33,14 @@ export function resolveFormKey(raw) {
   return literal ? literal[1] : null;
 }
 
+// The form keys PokeRogue's Pokemon.isMax() treats as Dynamax: Gigantamax (all three kinds) and Eternamax.
+const MAX_FORM_KEYS = ["gigantamax", "gigantamax-single", "gigantamax-rapid", "eternamax"];
+
+/** True for the forms the game counts as "max" (Eviolite does nothing for them). Unknown keys are not max. */
+export function isMaxForm(rawFormKey) {
+  return MAX_FORM_KEYS.includes(resolveFormKey(rawFormKey) ?? "");
+}
+
 /** Which template in en/pokemon-form-battle.json the game uses for this form key, or null for none. */
 export function formTemplateKey(formKey) {
   switch (formKey) {

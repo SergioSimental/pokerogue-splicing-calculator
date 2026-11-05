@@ -71,9 +71,59 @@
     </fieldset>
   </section>
 
+  <section class="itemrow">
+    <fieldset>
+      <legend>Held items of the primary Pokémon</legend>
+      <label class="wide">Soul Dew (0 to 10)<input id="soul-dew" type="number" min="0" max="10" step="1" value="0" inputmode="numeric"></label>
+      <label class="wide">Macho Brace (0 to 50)<input id="macho-brace" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Vitamins (up to the primary's IV for each stat)</span>
+      <label>HP Up<input id="vitamin0" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Protein<input id="vitamin1" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Iron<input id="vitamin2" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Calcium<input id="vitamin3" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Zinc<input id="vitamin4" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Carbos<input id="vitamin5" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Items that change the base stats before fusing</span>
+      <label class="item-check"><input id="sweet-shuckle-juice" type="checkbox"><span><b>Sweet Shuckle Juice</b> adds 10 to each of this Pokémon's own base stats (5 to HP). A second one changes nothing.</span></label>
+      <label class="item-check"><input id="foul-shuckle-juice" type="checkbox"><span><b>Foul Shuckle Juice</b> takes 15 off each of this Pokémon's own base stats (7.5 off HP, rounded down). A second one changes nothing.</span></label>
+      <label class="item-check"><input id="old-gateau" type="checkbox"><span><b>Old Gateau</b> adds 20 to this Pokémon's lower of HP and Speed, lower of Atk and Sp. Atk, and lower of Def and Sp. Def (a tie goes to Speed, Sp. Atk and Sp. Def).</span></label>
+      <span class="subhead">Other items</span>
+      <label class="item-check"><input id="eviolite" type="checkbox"><span><b>Eviolite</b> boosts Def and Sp. Def by half when the Pokémon can still evolve. For a fusion the full boost needs both Pokémon to be able to evolve, and only half of it applies if just one can. No effect on Gigantamaxed Pokémon.</span></label>
+      <div id="species-items" class="species-items" hidden>
+        <span class="subhead">Items for the picked Pokémon</span>
+      </div>
+      <p class="hint">Shuckle Juice and Old Gateau change this Pokémon's own base stats, and the fusion then averages them with the other Pokémon's. Vitamins, Soul Dew and Macho Brace change the stat shown. Vitamins count up to the stat's IV, for both Pokémon, since the fused Pokémon keeps the primary's IVs. Eviolite and the species items only apply in battle, so they add an arrow with the in-battle value.</p>
+    </fieldset>
+  </section>
+
+  <section class="itemrow">
+    <fieldset>
+      <legend>Held items of the secondary Pokémon</legend>
+      <label class="wide">Soul Dew (0 to 10)<input id="secondary-soul-dew" type="number" min="0" max="10" step="1" value="0" inputmode="numeric"></label>
+      <label class="wide">Macho Brace (0 to 50)<input id="secondary-macho-brace" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Vitamins (up to the primary's IV for each stat)</span>
+      <label>HP Up<input id="secondary-vitamin0" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Protein<input id="secondary-vitamin1" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Iron<input id="secondary-vitamin2" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Calcium<input id="secondary-vitamin3" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Zinc<input id="secondary-vitamin4" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <label>Carbos<input id="secondary-vitamin5" type="number" min="0" max="31" step="1" value="0" inputmode="numeric"></label>
+      <span class="subhead">Items that change the base stats before fusing</span>
+      <label class="item-check"><input id="secondary-sweet-shuckle-juice" type="checkbox"><span><b>Sweet Shuckle Juice</b> adds 10 to each of this Pokémon's own base stats (5 to HP). A second one changes nothing.</span></label>
+      <label class="item-check"><input id="secondary-foul-shuckle-juice" type="checkbox"><span><b>Foul Shuckle Juice</b> takes 15 off each of this Pokémon's own base stats (7.5 off HP, rounded down). A second one changes nothing.</span></label>
+      <label class="item-check"><input id="secondary-old-gateau" type="checkbox"><span><b>Old Gateau</b> adds 20 to this Pokémon's lower of HP and Speed, lower of Atk and Sp. Atk, and lower of Def and Sp. Def (a tie goes to Speed, Sp. Atk and Sp. Def).</span></label>
+      <span class="subhead">Other items</span>
+      <label class="item-check"><input id="secondary-eviolite" type="checkbox"><span><b>Eviolite</b> boosts Def and Sp. Def by half when the Pokémon can still evolve. For a fusion the full boost needs both Pokémon to be able to evolve, and only half of it applies if just one can. No effect on Gigantamaxed Pokémon.</span></label>
+      <div id="secondary-species-items" class="species-items" hidden>
+        <span class="subhead">Items for the picked Pokémon</span>
+      </div>
+      <p class="hint">When the two Pokémon fuse, everything the secondary Pokémon holds moves onto the primary. Matching items add up to their limit. A vitamin cannot go above the primary's IV.</p>
+    </fieldset>
+  </section>
+
   <section id="result" aria-live="polite"></section>
 
-  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs and nature. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's. The fused name is made with PokeRogue's own naming rule: the start of the primary Pokémon's name joined to the end of the secondary's.</p>
+  <p class="note">Fusion rules used: each base stat is the average of both Pokémon, rounded up. Stats at level use the averaged base stats, the primary Pokémon's level, IVs, nature and held items. Primary type comes from the primary Pokémon, secondary type from the secondary Pokémon. The ability is one of the secondary Pokémon's abilities, chosen by you; the passive ability is the primary Pokémon's. The fused name is made with PokeRogue's own naming rule: the start of the primary Pokémon's name joined to the end of the secondary's.</p>
   <p class="note">Free software under the <a href="https://github.com/SergioSimental/pokerogue-splicing-calculator/blob/main/LICENSE" rel="noopener">GNU AGPL-3.0</a>. <a href="https://github.com/SergioSimental/pokerogue-splicing-calculator" rel="noopener">Source code</a>.</p>
 </main>
 <script type="module" src="dist/main.js"></script>

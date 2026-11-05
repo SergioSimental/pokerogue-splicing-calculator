@@ -20,7 +20,8 @@ import { readFile, writeFile } from "node:fs/promises";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { readAbilities } from "./abilities-parser.mjs";
-import { formName } from "./form-names.mjs";
+import { hasEvolutions } from "./evolutions.mjs";
+import { formName, isMaxForm } from "./form-names.mjs";
 
 // Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
 // Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
@@ -42,6 +43,7 @@ const MIN_ENTRIES = 1000; // guard against upstream restructuring the files
 // a whole ability slot (every entry suddenly "has none") fails the run instead of being written out.
 const MIN_HIDDEN_SHARE = 0.4;
 const MIN_TWO_REGULAR_SHARE = 0.15;
+const MIN_CAN_EVOLVE_SHARE = 0.2; // about 45% of entries can still evolve today
 
 const TYPES = new Set([
   "Normal", "Fire", "Water", "Electric", "Grass", "Ice", "Fighting", "Poison", "Ground",
@@ -234,7 +236,9 @@ function buildDataset(generations, abilityNames, speciesNames, formTemplates) {
       }
       const passiveFor = readPassives(segment, id);
       const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)), abilities: readAbilities(head, id, nameOf) };
-      out.push({ name: baseName, fusionName: speciesName, ...base });
+      // Eviolite needs to know whether the species can still evolve. Alternate forms share the species' answer.
+      const canEvolve = hasEvolutions(segment, id);
+      out.push({ name: baseName, fusionName: speciesName, ...base, canEvolve, isMax: false });
 
       // Keep an alternate form only when its types, stats or passive differ from every earlier
       // entry of the species. Forms that are identical in all three would just add duplicates.
@@ -252,7 +256,7 @@ function buildDataset(generations, abilityNames, speciesNames, formTemplates) {
         if (seen.has(keyOf(form))) return;
         seen.add(keyOf(form));
         const fusionName = formName(speciesName, field(block, "formKey"), formTemplates, formId);
-        out.push({ name: `${baseName} (${formLabel})`, fusionName, ...form });
+        out.push({ name: `${baseName} (${formLabel})`, fusionName, ...form, canEvolve, isMax: isMaxForm(field(block, "formKey")) });
       });
     }
   }
@@ -279,10 +283,17 @@ function validate(data) {
       throw new Error(`${e.name}: needs one or two regular abilities`);
     }
     if (hidden !== null && (typeof hidden !== "string" || hidden === "")) throw new Error(`${e.name}: invalid hidden ability`);
+    if (typeof e.canEvolve !== "boolean" || typeof e.isMax !== "boolean") throw new Error(`${e.name}: canEvolve and isMax must be true or false`);
   }
   const share = test => data.filter(test).length / data.length;
   if (share(e => e.abilities.hidden !== null) < MIN_HIDDEN_SHARE) {
     throw new Error("Hardly any entries have a hidden ability. The abilityHidden format upstream probably changed.");
+  }
+  if (share(e => e.canEvolve) < MIN_CAN_EVOLVE_SHARE) {
+    throw new Error("Hardly any entries can evolve. The evolutions format upstream probably changed.");
+  }
+  if (!data.some(e => e.isMax)) {
+    throw new Error("No Gigantamax or Eternamax forms found. The formKey format upstream probably changed.");
   }
   if (share(e => e.abilities.regular.length === 2) < MIN_TWO_REGULAR_SHARE) {
     throw new Error("Hardly any entries have two regular abilities. The ability2 format upstream probably changed.");

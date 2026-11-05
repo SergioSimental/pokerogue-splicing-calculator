@@ -9,6 +9,8 @@ const mon = (regular: string[], hidden: string | null): Pokemon => ({
   passive: "Passive",
   abilities: { regular, hidden },
   fusionName: "Test",
+  canEvolve: false,
+  isMax: false,
 });
 
 describe("abilityChoices", () => {
