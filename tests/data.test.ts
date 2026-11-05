@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { evioliteMultiplier, speciesItemsOf } from "../src/heldItems.js";
 import type { Pokemon } from "../src/types.js";
 
 const TYPES = new Set([
@@ -130,5 +131,28 @@ describe("data/pokemon.json", () => {
     expect(find("Garchomp")).toMatchObject({ stats: [108, 130, 95, 80, 85, 102], types: ["Dragon", "Ground"] });
     expect(find("Charizard")).toMatchObject({ stats: [78, 84, 78, 109, 85, 100], types: ["Fire", "Flying"] });
     expect(find("Blissey")?.stats[0]).toBe(255);
+  });
+});
+
+// The same pairs PokeRogue's own tests use (test/tests/items/eviolite.test.ts, thick-club.test.ts and the other
+// species item tests), run on the real data, so a wrong canEvolve flag or species list shows up here.
+describe("PokeRogue's own Eviolite and species item cases, on the real data", () => {
+  const find = (name: string) => dex.find(p => p.name === name) as Pokemon;
+  const pair = (a: string, b: string) => evioliteMultiplier(find(a), find(b));
+
+  it("Eviolite: full boost when both can evolve, a quarter when one can, none otherwise", () => {
+    expect(pair("Pichu", "Cleffa")).toBe(1.5);
+    expect(pair("Pichu", "Clefable")).toBe(1.25);
+    expect(pair("Raichu", "Cleffa")).toBe(1.25);
+    expect(pair("Raichu", "Clefable")).toBe(1);
+  });
+
+  it("species items: each item is offered for its species and their forms", () => {
+    const ids = (name: string) => speciesItemsOf(find(name)).map(i => i.id);
+    for (const name of ["Cubone", "Marowak", "Alolan Marowak"]) expect(ids(name), name).toEqual(["thick-club"]);
+    expect(ids("Pikachu")).toEqual(["light-ball"]);
+    expect(ids("Ditto")).toEqual(["metal-powder", "quick-powder"]);
+    expect(ids("Clamperl")).toEqual(["deep-sea-tooth", "deep-sea-scale"]);
+    expect(ids("Raichu")).toEqual([]);
   });
 });

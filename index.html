@@ -36,21 +36,23 @@
     </label>
   </section>
 
-  <section class="levelrow">
-    <label class="level">Level of the primary Pokémon (1 or higher)
-      <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
-    </label>
-  </section>
+  <div class="setuprow">
+    <section class="levelrow">
+      <label class="level">Level of the primary Pokémon (1 or higher)
+        <input id="level" type="number" min="1" step="1" value="50" inputmode="numeric">
+      </label>
+    </section>
 
-  <section class="naturerow">
-    <div class="field nature">
-      <label for="nature">Nature of the primary Pokémon</label>
-      <div class="combo">
-        <input id="nature" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
-        <ul id="nature-list"></ul>
+    <section class="naturerow">
+      <div class="field nature">
+        <label for="nature">Nature of the primary Pokémon</label>
+        <div class="combo">
+          <input id="nature" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled>
+          <ul id="nature-list"></ul>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </div>
 
   <section class="passiverow">
     <label class="check">
