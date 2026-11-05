@@ -89,7 +89,11 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Full Pokédex data (e.g. generated from PokeAPI)
-- Search and filters, shareable links
+- Shareable setups: put the picks, level, IVs, nature and held items in the page's link so a build can be saved or posted
+- Best partner search: pick a primary and see which secondaries give the highest stat or total, with filters
+- Abilities that change stats (Huge Power, Hustle and similar), shown as in-battle values like Eviolite and species items
+- A two-column layout on wide screens (inputs on the left, results on the right) so everything fits in one window
+- Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
 
 ## License
 Copyright (c) 2026 SergioSimental. Includes code from PokeRogue, copyright 2024-2026 Pagefault Games (AGPL-3.0-only). Licensed under the [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only). The project includes a port of code from PokeRogue (`src/fusionName.ts`), which is itself AGPL-3.0 licensed, so the whole project is released under the same licence. If you run a modified version of this site for other people, the AGPL requires you to offer them its source code; the page links to this repository for that reason. Earlier versions of this project (before the licence changed) were released under the MIT licence, and copies of those remain under it.
