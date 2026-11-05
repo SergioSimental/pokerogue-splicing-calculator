@@ -279,7 +279,7 @@ describe("held item boxes", () => {
   });
 
   it("explains what each kind of item changes", () => {
-    const hint = $(".itemrow .hint")?.textContent ?? "";
+    const hint = $("#item-help .hint")?.textContent ?? "";
     expect(hint).toContain("Vitamins, Soul Dew and Macho Brace change the stat shown");
     expect(hint).toContain("only apply in battle");
   });
@@ -397,7 +397,7 @@ describe("Eviolite and species items, one set per Pokémon", () => {
     for (const id of ["eviolite", "secondary-eviolite"]) {
       expect(box(id).type).toBe("checkbox");
       expect(box(id).checked).toBe(false);
-      expect(box(id).closest("label")?.textContent).toContain("No effect on Gigantamaxed Pokémon");
+      expect(box(id).closest("label")?.title).toContain("No effect on Gigantamaxed Pokémon");
     }
   });
 
