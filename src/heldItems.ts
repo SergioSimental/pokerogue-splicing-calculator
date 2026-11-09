@@ -1,3 +1,4 @@
+import { abilityMultiplier } from "./abilityStats.js";
 import type { Pokemon } from "./types.js";
 import { MACHO_BRACE_MAX, MAX_IV, SOUL_DEW_MAX } from "./fuse.js";
 
@@ -99,10 +100,12 @@ export function evioliteMultiplier(primary: Pokemon, secondary: Pokemon): number
 export interface BattleItems {
   eviolite: boolean;
   species: readonly string[];
+  /** Abilities in effect (see activeAbilities); only the ones that change a stat on their own matter. */
+  abilities?: readonly string[];
 }
 
 /**
- * The in-battle multiplier for one stat from Eviolite and species items. The game applies these after the
+ * The in-battle multiplier for one stat from Eviolite, species items and abilities like Huge Power. The game applies these after the
  * permanent stat is worked out (Pokemon.getEffectiveStat), so they are kept apart from it. Ticked items
  * that do not apply to the picked pair are ignored.
  */
@@ -112,6 +115,7 @@ export function battleMultiplier(statIndex: number, primary: Pokemon, secondary:
   for (const item of speciesItemsFor(primary, secondary)) {
     if (items.species.includes(item.id) && item.stats.includes(statIndex)) multiplier *= SPECIES_ITEM_MULTIPLIER;
   }
+  multiplier *= abilityMultiplier(statIndex, items.abilities ?? []);
   return multiplier;
 }
 

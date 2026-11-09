@@ -1,3 +1,4 @@
+import { abilityMultiplier } from "./abilityStats.js";
 import { MACHO_BRACE_MAX, MAX_IV, SOUL_DEW_MAX } from "./fuse.js";
 /**
  * Most stacks of each held item, as PokeRogue allows them. The vitamin limit here is the highest
@@ -58,7 +59,7 @@ export function evioliteMultiplier(primary, secondary) {
     return 1;
 }
 /**
- * The in-battle multiplier for one stat from Eviolite and species items. The game applies these after the
+ * The in-battle multiplier for one stat from Eviolite, species items and abilities like Huge Power. The game applies these after the
  * permanent stat is worked out (Pokemon.getEffectiveStat), so they are kept apart from it. Ticked items
  * that do not apply to the picked pair are ignored.
  */
@@ -70,6 +71,7 @@ export function battleMultiplier(statIndex, primary, secondary, items) {
         if (items.species.includes(item.id) && item.stats.includes(statIndex))
             multiplier *= SPECIES_ITEM_MULTIPLIER;
     }
+    multiplier *= abilityMultiplier(statIndex, items.abilities ?? []);
     return multiplier;
 }
 /** The permanent stat with the in-battle multiplier applied, rounded down and never below 1. */

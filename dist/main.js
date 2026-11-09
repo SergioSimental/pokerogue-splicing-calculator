@@ -1,5 +1,6 @@
 import { abilityChoices } from "./abilities.js";
 import { Combobox, normalize } from "./ui/combobox.js";
+import { abilityStatNote, activeAbilities, hasHpIsOne } from "./abilityStats.js";
 import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { battleMultiplier, battleStat, clampCount, fusedItemLines, HELD_ITEM_LIMITS, mergeHeldItems, SPECIES_ITEMS, speciesItemsOf, } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
@@ -223,12 +224,16 @@ function render() {
     const held = mergeHeldItems(primaryHeld, secondaryHeld, ivs);
     // Shuckle Juice and Old Gateau change the primary Pokémon's own base stats before the two are averaged.
     const f = fuse(primary, secondary, { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau });
-    // The permanent stat: base stats, level, IV, nature, vitamins, Soul Dew and Macho Brace.
+    // A fused Pokémon takes its ability from its secondary Pokémon (the one the user picked above) and its passive
+    // from the primary Pokémon, once that passive is unlocked.
+    const chosenAbility = abilityList[Number(abilitySelect.value)] ?? abilityList[0];
+    const activeNames = activeAbilities(chosenAbility?.name, primary.passive, passiveToggle.checked);
+    // The permanent stat: base stats, level, IV, nature, vitamins, Soul Dew and Macho Brace (and Wonder Guard's 1 HP).
     const atLevel = f.stats.map((v, i) => statAtLevel(i, v, level, ivs[i] ?? 0, natureMultiplier(NATURES[natureBox.index], i), {
-        vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew,
+        vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew, hpIsOne: hasHpIsOne(activeNames),
     }));
-    // Eviolite and species items change the stat only in battle, so they are worked out on top of it.
-    const optional = { eviolite: held.eviolite, species: held.species };
+    // Eviolite, species items and abilities like Huge Power change the stat only in battle, so they are worked out on top of it.
+    const optional = { eviolite: held.eviolite, species: held.species, abilities: activeNames };
     const inBattle = atLevel.map((v, i) => battleStat(v, battleMultiplier(i, primary, secondary, optional)));
     const boosted = inBattle.some((v, i) => v !== atLevel[i]);
     const rows = STAT_NAMES.map((name, i) => {
@@ -241,7 +246,7 @@ function render() {
         const value = h("span", "lvl", fmt(atLevel[i] ?? 0));
         if (inBattle[i] !== atLevel[i]) {
             const battle = h("span", "battle", `\u2192 ${fmt(inBattle[i] ?? 0)}`);
-            battle.title = "Value in battle with Eviolite or a species item";
+            battle.title = "Value in battle with Eviolite, a species item or an ability like Huge Power";
             value.append(battle);
         }
         row.append(h("span", undefined, name), track, value);
@@ -253,13 +258,20 @@ function render() {
         chip.style.background = COLORS[t];
         types.append(chip);
     }
-    // A fused Pokémon takes its ability from its secondary Pokémon (the one the user picked above)...
-    const chosenAbility = abilityList[Number(abilitySelect.value)] ?? abilityList[0];
     const abilityLine = h("div", "ability");
     abilityLine.append(h("b", undefined, "Ability: "), chosenAbility?.label ?? "None");
-    // ...and the passive of its primary (first) Pokémon, once that passive is unlocked.
     const passiveLine = h("div", "passive");
     passiveLine.append(h("b", undefined, "Passive: "), primary.passive);
+    // Abilities that change a stat on their own say so (and a passive that repeats the ability does not count twice).
+    const noted = [
+        [abilityLine, chosenAbility?.name],
+        [passiveLine, primary.passive === chosenAbility?.name ? undefined : primary.passive],
+    ];
+    for (const [line, name] of noted) {
+        const note = name !== undefined && activeNames.includes(name) ? abilityStatNote(name) : undefined;
+        if (note)
+            line.append(h("span", "ability-note", ` (${note})`));
+    }
     const abilities = h("div", "abilities");
     abilities.append(abilityLine, ...(passiveToggle.checked ? [passiveLine] : []));
     // What the fused Pokémon holds once both Pokémon's items are combined.
@@ -271,7 +283,7 @@ function render() {
     const legend = h("div", "legend");
     legend.append("Markers show the ", h("b", undefined, "primary"), " and ", h("b", undefined, "secondary"), " values.");
     if (boosted)
-        legend.append(" An arrow shows the in-battle value with Eviolite or a species item.");
+        legend.append(" An arrow shows the in-battle value with Eviolite, a species item or an ability like Huge Power.");
     const totalAtLevel = atLevel.reduce((x, y) => x + y, 0);
     const totalInBattle = inBattle.reduce((x, y) => x + y, 0);
     const total = `Total at Lv ${fmt(level)}: ${fmt(totalAtLevel)}${boosted ? ` (${fmt(totalInBattle)} in battle)` : ""}`;
