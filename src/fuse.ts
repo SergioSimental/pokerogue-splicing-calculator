@@ -81,6 +81,8 @@ export interface HeldStatItems {
   vitamin?: number;
   machoBrace?: number;
   soulDew?: number;
+  /** Wonder Guard (as the ability or the passive) sets the stored max HP to 1. Only HP is affected. */
+  hpIsOne?: boolean;
 }
 
 /** Whole stack count between 0 and max. */
@@ -98,6 +100,7 @@ function stacks(value: number | undefined, max: number): number {
  *  3. Soul Dew widens a nature that is not neutral for this stat by 0.1 per stack.
  *     The nature step rounds up when it boosts the stat and down when it lowers it (never below 1).
  *  4. Macho Brace adds 2 HP or 1 of any other stat per stack, and at 50 stacks multiplies by 1.1 (HP) or 1.05.
+ *  5. Wonder Guard then sets HP to 1.
  */
 export function statAtLevel(
   statIndex: number,
@@ -116,6 +119,7 @@ export function statAtLevel(
   if (statIndex === 0) {
     let hp = core + level + 10 + 2 * brace;
     if (brace === MACHO_BRACE_MAX) hp = Math.floor(hp * 1.1);
+    if (held.hpIsOne) return 1;
     return Math.max(hp, 1);
   }
 

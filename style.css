@@ -82,3 +82,4 @@ button{cursor:pointer;font-size:1.2rem}
 .ability-pick{color:var(--secondary)}
 .ability-pick select{width:100%;color:var(--ink)}
 .ability-pick select:disabled{opacity:.6;cursor:wait}
+.ability-note{opacity:.8}

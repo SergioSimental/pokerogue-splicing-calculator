@@ -21,6 +21,9 @@ const dex = [
   { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
   { name: "Gmax Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
   { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false },
+  { name: "Brute", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Hustle", abilities: { regular: ["Huge Power", "Pure Power"], hidden: "Wonder Guard" }, fusionName: "Brute", canEvolve: false, isMax: false },
+  { name: "Echo", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Huge Power", abilities: { regular: ["Huge Power"], hidden: null }, fusionName: "Echo", canEvolve: false, isMax: false },
+  { name: "Guardian", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Wonder Guard", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Guardian", canEvolve: false, isMax: false },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);
@@ -62,6 +65,7 @@ const resetCalculator = () => {
     for (const id of ["sweet-shuckle-juice", "foul-shuckle-juice", "old-gateau"]) tick(`${prefix}${id}`, false);
   }
   pick("#nature", "hardy");
+  tick("passive-unlocked", false);
 };
 
 beforeAll(async () => {
@@ -839,5 +843,73 @@ describe("Shuckle Juice and Old Gateau change the fused base stats", () => {
     tick("old-gateau");
     expect(shown()).toEqual([328, 275, 275, 285, 285, 285]);
     expect(fill(3)).toBe("100%");
+  });
+});
+
+// Abilities that change a stat without any battle condition: Huge Power, Pure Power, Hustle and Wonder Guard.
+// Plain stats for the 50-stat Pokémon at Lv 50 with 31 IVs are 125, 70, 70, 70, 70, 70.
+describe("abilities that change a stat by themselves", () => {
+  const abilityText = () => $("#result .ability")?.textContent;
+  const passiveText = () => $("#result .passive")?.textContent;
+  const choose = (value: string) => {
+    const select = $("#ability") as HTMLSelectElement;
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  beforeEach(() => {
+    resetCalculator();
+    pick("#primary", "safe");
+    pick("#secondary", "brute");
+    choose("0"); // the ability choice is kept while the secondary stays the same, so start from the first
+  });
+
+  it.each([["0", "Huge Power"], ["1", "Pure Power"]])("%s: %s doubles Atk in battle", (value, name) => {
+    choose(value);
+    expect(shown()).toEqual([125, 70, 70, 70, 70, 70]);
+    expect(arrows()).toEqual([null, "→ 140", null, null, null, null]);
+    expect(abilityText()).toBe(`Ability: ${name} (Atk ×2 in battle)`);
+  });
+
+  it("Wonder Guard (the hidden ability) leaves HP at 1, whatever else raises it", () => {
+    choose("2");
+    expect(shown()).toEqual([1, 70, 70, 70, 70, 70]);
+    expect(abilityText()).toBe("Ability: Wonder Guard (Hidden) (max HP is 1)");
+    setNumber("macho-brace", "50");
+    setNumber("vitamin0", "31");
+    expect(shown()[0]).toBe(1);
+  });
+
+  it("counts the primary's passive only once it is unlocked, and multiplies it with the ability", () => {
+    pick("#primary", "brute"); // its passive is Hustle
+    expect(arrows()[1]).toBe("→ 140");
+    expect(passiveText()).toBeUndefined();
+    tick("passive-unlocked");
+    expect(arrows()[1]).toBe("→ 210"); // Huge Power ×2 and Hustle ×1.5 together
+    expect(passiveText()).toBe("Passive: Hustle (Atk ×1.5 in battle)");
+  });
+
+  it("does not count a passive twice when it is the same ability as the fused ability", () => {
+    pick("#primary", "echo"); // its passive is Huge Power
+    pick("#secondary", "echo");
+    tick("passive-unlocked");
+    expect(arrows()[1]).toBe("→ 140");
+    expect(abilityText()).toBe("Ability: Huge Power (Atk ×2 in battle)");
+    expect(passiveText()).toBe("Passive: Huge Power"); // not counted, so no effect note
+  });
+
+  it("applies Wonder Guard from the passive too", () => {
+    pick("#primary", "guardian");
+    pick("#secondary", "safe");
+    expect(shown()[0]).toBe(125);
+    tick("passive-unlocked");
+    expect(shown()[0]).toBe(1);
+    expect(passiveText()).toBe("Passive: Wonder Guard (max HP is 1)");
+  });
+
+  it("says nothing extra for an ability that does not change a stat", () => {
+    pick("#secondary", "safe");
+    expect(abilityText()).toBe("Ability: Ability B");
+    expect(arrows()).toEqual([null, null, null, null, null, null]);
   });
 });
