@@ -97,7 +97,6 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 ## Roadmap
 - Shareable setups: put the picks, level, IVs, nature and held items in the page's link so a build can be saved or posted
 - Best partner search: pick a primary and see which secondaries give the highest stat or total, with filters
-- A two-column layout on wide screens (inputs on the left, results on the right) so everything fits in one window
 - Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
 
 ## License
