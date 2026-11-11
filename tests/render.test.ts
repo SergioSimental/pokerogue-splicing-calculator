@@ -268,7 +268,7 @@ describe("held item boxes", () => {
   };
 
   it("has a Soul Dew box, a Macho Brace box and six vitamin boxes, all starting at 0", () => {
-    expect($(".itemrow fieldset legend")?.textContent).toBe("Held items of the primary Pokémon");
+    expect($(".itemrow fieldset legend")?.textContent).toBe("Primary's held items");
     expect(($(".itemrow fieldset") as HTMLElement).querySelectorAll("input[type=number]")).toHaveLength(8);
     for (const id of ids) expect(input(id).value, id).toBe("0");
   });
@@ -407,7 +407,7 @@ describe("Eviolite and species items, one set per Pokémon", () => {
 
   it("has a held items section for each Pokémon", () => {
     const legends = [...document.querySelectorAll(".itemrow fieldset legend")].map(l => l.textContent);
-    expect(legends).toEqual(["Held items of the primary Pokémon", "Held items of the secondary Pokémon"]);
+    expect(legends).toEqual(["Primary's held items", "Secondary's held items"]);
     expect(document.querySelectorAll("#secondary-soul-dew, #secondary-macho-brace, [id^=secondary-vitamin]")).toHaveLength(8);
   });
 
