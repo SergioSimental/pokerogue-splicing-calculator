@@ -5,6 +5,7 @@ import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { battleMultiplier, battleStat, clampCount, fusedItemLines, HELD_ITEM_LIMITS, mergeHeldItems, SPECIES_ITEMS, speciesItemsOf, } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
+import { rankPartners } from "./partners.js";
 import { STAT_NAMES } from "./types.js";
 const COLORS = {
     Normal: "#8a8a72", Fire: "#e2622a", Water: "#4a7fd6", Electric: "#c9a010",
@@ -289,6 +290,51 @@ function render() {
     const total = `Total at Lv ${fmt(level)}: ${fmt(totalAtLevel)}${boosted ? ` (${fmt(totalInBattle)} in battle)` : ""}`;
     // Everything below is set with textContent, so Pokémon names are never parsed as HTML.
     result.replaceChildren(h("h2", undefined, fusedName), h("div", "parents", `${primary.name} + ${secondary.name}`), types, abilities, ...(heldLines.length > 0 ? [holding] : []), labels, ...rows, h("div", "total", total), legend);
+    renderPartners(primary, level, ivs, held, natureBox.index);
+}
+const rankSel = el("rank-by");
+const typeSel = el("rank-type");
+const maxChk = el("rank-hidemax");
+const partnerBody = el("partner-body");
+for (const t of Object.keys(COLORS))
+    typeSel.append(new Option(t, t));
+for (const c of [rankSel, typeSel, maxChk])
+    c.addEventListener("change", () => render());
+function renderPartners(primary, level, ivs, held, nature) {
+    const by = rankSel.value === "total" ? "total" : Number(rankSel.value);
+    const top = rankPartners(primary, dex, {
+        level, ivs, rankBy: by, hideMax: maxChk.checked, limit: 10,
+        type: (typeSel.value || undefined),
+        natureMultiplier: i => natureMultiplier(NATURES[nature], i),
+        baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },
+        heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
+    });
+    const table = h("table", "partners");
+    const head = h("tr");
+    head.append(h("th", undefined, "#"), h("th", undefined, "Partner"), h("th", undefined, "Types"));
+    STAT_NAMES.forEach((n, i) => head.append(h("th", by === i ? "hot" : undefined, n)));
+    head.append(h("th", by === "total" ? "hot" : undefined, "Total"));
+    table.append(head);
+    top.forEach((p, n) => {
+        const tr = h("tr");
+        tr.tabIndex = 0;
+        tr.title = `Use ${p.secondary.name} as the secondary`;
+        const pick = () => { secondaryBox.setIndex(dex.indexOf(p.secondary)); render(); };
+        tr.onclick = pick;
+        tr.onkeydown = e => { if (e.key === "Enter")
+            pick(); };
+        const types = h("td", "ptypes");
+        for (const t of p.types) {
+            const c = h("span", "type", t);
+            c.style.background = COLORS[t];
+            types.append(c);
+        }
+        tr.append(h("td", undefined, String(n + 1)), h("td", "pname", p.secondary.name), types);
+        p.stats.forEach((v, i) => tr.append(h("td", by === i ? "hot" : undefined, fmt(v))));
+        tr.append(h("td", by === "total" ? "hot" : undefined, fmt(p.total)));
+        table.append(tr);
+    });
+    partnerBody.replaceChildren(top.length ? table : h("p", undefined, "No partners match these filters."));
 }
 async function init() {
     try {

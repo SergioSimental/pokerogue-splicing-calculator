@@ -8,6 +8,7 @@ import {
 } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
+import { rankPartners } from "./partners.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
 const COLORS: Record<PokemonType, string> = {
@@ -330,6 +331,46 @@ function render(): void {
     h("div", "total", total),
     legend,
   );
+  renderPartners(primary, level, ivs, held, natureBox.index);
+}
+
+const rankSel = el<HTMLSelectElement>("rank-by");
+const typeSel = el<HTMLSelectElement>("rank-type");
+const maxChk = el<HTMLInputElement>("rank-hidemax");
+const partnerBody = el<HTMLElement>("partner-body");
+for (const t of Object.keys(COLORS)) typeSel.append(new Option(t, t));
+for (const c of [rankSel, typeSel, maxChk]) c.addEventListener("change", () => render());
+
+function renderPartners(primary: Pokemon, level: number, ivs: number[], held: ReturnType<typeof mergeHeldItems>, nature: number): void {
+  const by = rankSel.value === "total" ? "total" : Number(rankSel.value);
+  const top = rankPartners(primary, dex, {
+    level, ivs, rankBy: by, hideMax: maxChk.checked, limit: 10,
+    type: (typeSel.value || undefined) as PokemonType | undefined,
+    natureMultiplier: i => natureMultiplier(NATURES[nature], i),
+    baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },
+    heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
+  });
+  const table = h("table", "partners");
+  const head = h("tr");
+  head.append(h("th", undefined, "#"), h("th", undefined, "Partner"), h("th", undefined, "Types"));
+  STAT_NAMES.forEach((n, i) => head.append(h("th", by === i ? "hot" : undefined, n)));
+  head.append(h("th", by === "total" ? "hot" : undefined, "Total"));
+  table.append(head);
+  top.forEach((p, n) => {
+    const tr = h("tr");
+    tr.tabIndex = 0;
+    tr.title = `Use ${p.secondary.name} as the secondary`;
+    const pick = () => { secondaryBox.setIndex(dex.indexOf(p.secondary)); render(); };
+    tr.onclick = pick;
+    tr.onkeydown = e => { if (e.key === "Enter") pick(); };
+    const types = h("td", "ptypes");
+    for (const t of p.types) { const c = h("span", "type", t); c.style.background = COLORS[t]; types.append(c); }
+    tr.append(h("td", undefined, String(n + 1)), h("td", "pname", p.secondary.name), types);
+    p.stats.forEach((v, i) => tr.append(h("td", by === i ? "hot" : undefined, fmt(v))));
+    tr.append(h("td", by === "total" ? "hot" : undefined, fmt(p.total)));
+    table.append(tr);
+  });
+  partnerBody.replaceChildren(top.length ? table : h("p", undefined, "No partners match these filters."));
 }
 
 async function init(): Promise<void> {

@@ -913,3 +913,85 @@ describe("abilities that change a stat by themselves", () => {
     expect(arrows()).toEqual([null, null, null, null, null, null]);
   });
 });
+
+describe("best partner search", () => {
+  const rows = () => [...document.querySelectorAll<HTMLElement>("#partner-body tr[tabindex]")];
+  const rowNames = () => rows().map(r => r.querySelector(".pname")?.textContent);
+  const choose = (id: string, value: string) => {
+    const select = $(`#${id}`) as HTMLSelectElement;
+    select.value = value;
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+  const hideMax = (on: boolean) => {
+    const box = $("#rank-hidemax") as HTMLInputElement;
+    box.checked = on;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
+  beforeEach(() => {
+    resetCalculator();
+    pick("#primary", "safe");
+    choose("rank-by", "total");
+    choose("rank-type", "");
+    hideMax(false);
+  });
+
+  it("lists at most ten partners, best total first", () => {
+    expect(rows().length).toBe(10);
+    expect(rowNames()[0]).toBe("Colossus");
+  });
+
+  it("ranks by the chosen stat and highlights its column", () => {
+    choose("rank-by", "5");
+    expect(rowNames()[0]).toBe("Colossus");
+    expect(document.querySelectorAll("#partner-body th.hot").length).toBe(1);
+    expect($("#partner-body th.hot")?.textContent).toBe("Spe");
+  });
+
+  it("hides Max forms and filters by the fused type", () => {
+    expect(rowNames()).toContain("Gmax Mon");
+    hideMax(true);
+    expect(rowNames()).not.toContain("Gmax Mon");
+    choose("rank-type", "Water");
+    // Safe Mon is Water, so every fusion with it is Water
+    expect(rows().length).toBeGreaterThan(0);
+    choose("rank-type", "Dragon");
+    expect($("#partner-body")?.textContent).toBe("No partners match these filters.");
+  });
+
+  it("shows the same stats as the calculator for the same pair", () => {
+    pick("#secondary", "colossus");
+    const row = rows().find(r => r.querySelector(".pname")?.textContent === "Colossus");
+    const cells = [...(row?.querySelectorAll("td") ?? [])].slice(3).map(c => Number((c.textContent ?? "").replace(/,/g, "")));
+    expect(cells.slice(0, 6)).toEqual(shown());
+    expect(cells[6]).toBe(shown().reduce((a, b) => a + b, 0));
+  });
+
+  it("follows the level and the held items", () => {
+    const before = rows()[0]?.textContent;
+    setNumber("level", "100");
+    expect(rows()[0]?.textContent).not.toBe(before);
+    const atLevel100 = rows()[0]?.textContent;
+    setNumber("macho-brace", "50");
+    expect(rows()[0]?.textContent).not.toBe(atLevel100);
+  });
+
+  it("uses a clicked row as the secondary Pokémon", () => {
+    rows().find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
+    expect($("#result .parents")?.textContent).toBe("Safe Mon + Echo");
+    expect(($("#secondary") as HTMLInputElement).value).toBe("Echo");
+  });
+
+  it("links to the panel from the top and back again", () => {
+    expect(($(".jump") as HTMLAnchorElement).getAttribute("href")).toBe("#partners");
+    expect($("#partners")).not.toBeNull();
+    expect(($("#partners .btn") as HTMLAnchorElement).getAttribute("href")).toBe("#top");
+    expect($("#top")).not.toBeNull();
+  });
+
+  it("writes names as text, never as markup", () => {
+    pick("#primary", "safe");
+    expect($("#partner-body img")).toBeNull();
+    expect($("#partner-body script")).toBeNull();
+  });
+});

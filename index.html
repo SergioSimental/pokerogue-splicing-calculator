@@ -8,9 +8,9 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main>
+<main id="top">
   <h1>PokeRogue Splicing Calculator</h1>
-  <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing.</p>
+  <p class="lede">Pick a primary and a secondary Pokémon to see the fusion's base stats and typing. <a class="jump" href="#partners">Find the best partner ↓</a></p>
 
   <div class="layout">
     <div class="inputs">
@@ -131,6 +131,16 @@
           <li><b>Eviolite</b> Boosts Def and Sp. Def by half when the Pokémon can still evolve. For a fusion the full boost needs both Pokémon to be able to evolve, and only half of it applies if just one can. No effect on Gigantamaxed Pokémon.</li>
         </ul>
       </details>
+      <section id="partners">
+        <div class="phead"><h2>Best partner</h2><a class="btn" href="#top">↑ Back to top</a></div>
+        <p class="hint">Fuses your primary with every Pokémon at the level, nature, IVs and items above. Click a row to use it.</p>
+        <div class="pfilters">
+          <label>Rank by <select id="rank-by"><option value="total">Total</option><option value="0">HP</option><option value="1">Attack</option><option value="2">Defense</option><option value="3">Sp. Atk</option><option value="4">Sp. Def</option><option value="5">Speed</option></select></label>
+          <label>Type <select id="rank-type"><option value="">Any</option></select></label>
+          <label class="chk"><input type="checkbox" id="rank-hidemax"> Hide Max forms</label>
+        </div>
+        <div id="partner-body"></div>
+      </section>
     </div>
     <div class="results">
       <section id="result" aria-live="polite"></section>
