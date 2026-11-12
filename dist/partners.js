@@ -1,9 +1,15 @@
 import { fuse, statAtLevel } from "./fuse.js";
+/** Mega forms are named "X (Mega)", "X (Mega X)", "X (Mega Curly)" and so on; species like Meganium never have the bracket. */
+export function isMegaForm(pokemon) {
+    return /\(Mega( [^)]+)?\)$/.test(pokemon.name);
+}
 /** Fuse the primary with every Pokémon in the dex and return the best partners first. */
 export function rankPartners(primary, dex, o) {
     const out = [];
     for (const secondary of dex) {
         if (o.hideMax && secondary.isMax)
+            continue;
+        if (o.hideMega && isMegaForm(secondary))
             continue;
         const f = fuse(primary, secondary, o.baseItems);
         if (o.type && !f.types.includes(o.type))

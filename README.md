@@ -66,6 +66,9 @@ There is a **Held items** box for each Pokémon, because PokeRogue moves everyth
 
 "Holds after fusing" on the results card lists what the fused Pokémon ends up with. Vitamins, Soul Dew and Macho Brace change the stat shown. Eviolite and the species items only apply in battle (the game adds them after the stored stat is worked out), so they add an arrow with the in-battle value next to the stat and a second total.
 
+## Best partner
+The panel at the bottom of the left column (the "Find the best partner" link under the title jumps to it, and "Back to top" returns) fuses the primary with every Pokémon in the data and lists the ten best. Choose to rank by the total or any one stat, keep only fused Pokémon with a given type, hide Max forms, and hide Mega forms. It uses the level, nature, IVs and held items entered above (the same stats as the result card, before the in-battle effects of Eviolite, species items and abilities), so it answers "which secondary gives this primary the most Speed?". Click a row to use that Pokémon as the secondary. It ranks stats only: ability, passive and typing matter in a real run, so check them in the result card.
+
 ## Fused name
 The big heading on the results card is the fused Pokémon's name, made by `fusedSpeciesName()` in `src/fusionName.ts`. It is a port of PokeRogue's own `getFusedSpeciesName()`, kept identical (quirks included) so the names match the game's: roughly, the start of the primary Pokémon's name joined to the end of the secondary's, with special handling for prefixes like "Mega", suffixes like "X", hyphens, and a Rapidash case. The two names it uses are each entry's `fusionName`, so swapping the Pokémon changes the result. The port was checked against the game's function on every pair of names in the data (about 1.3 million) with no differences. Names are the English ones.
 
@@ -96,7 +99,6 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Shareable setups: put the picks, level, IVs, nature and held items in the page's link so a build can be saved or posted
-- Best partner search: pick a primary and see which secondaries give the highest stat or total, with filters
 - Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
 
 ## License
@@ -105,4 +107,4 @@ Copyright (c) 2026 SergioSimental. Includes code from PokeRogue, copyright 2024-
 PokeRogue's data files are read at update time and attributed above. Pokémon and PokeRogue are property of their respective owners; this is an unofficial fan project.
 
 ## Structure
-`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/heldItems.ts` (held item limits, how two Pokémon's items combine, Eviolite and species items), `src/abilityStats.ts` (abilities that change a stat by themselves), `src/abilities.ts` (which abilities a fusion can take), `src/fusionName.ts` (fused name rule, ported from PokeRogue), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator), `scripts/abilities-parser.mjs` (reads abilities from PokeRogue's source), `scripts/form-names.mjs` (works out each entry's `fusionName` and whether it is a Max form), `scripts/evolutions.mjs` (whether a species can still evolve).
+`src/types.ts` (types), `src/fuse.ts` (fusion rules), `src/natures.ts` (natures), `src/partners.ts` (best partner ranking), `src/heldItems.ts` (held item limits, how two Pokémon's items combine, Eviolite and species items), `src/abilityStats.ts` (abilities that change a stat by themselves), `src/abilities.ts` (which abilities a fusion can take), `src/fusionName.ts` (fused name rule, ported from PokeRogue), `src/ui/combobox.ts` (searchable dropdown), `src/main.ts` (UI), `tests/` (tests), `data/pokemon.json` (dex), `scripts/update-data.mjs` (data generator), `scripts/abilities-parser.mjs` (reads abilities from PokeRogue's source), `scripts/form-names.mjs` (works out each entry's `fusionName` and whether it is a Max form), `scripts/evolutions.mjs` (whether a species can still evolve).

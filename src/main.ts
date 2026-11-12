@@ -337,14 +337,15 @@ function render(): void {
 const rankSel = el<HTMLSelectElement>("rank-by");
 const typeSel = el<HTMLSelectElement>("rank-type");
 const maxChk = el<HTMLInputElement>("rank-hidemax");
+const megaChk = el<HTMLInputElement>("rank-hidemega");
 const partnerBody = el<HTMLElement>("partner-body");
 for (const t of Object.keys(COLORS)) typeSel.append(new Option(t, t));
-for (const c of [rankSel, typeSel, maxChk]) c.addEventListener("change", () => render());
+for (const c of [rankSel, typeSel, maxChk, megaChk]) c.addEventListener("change", () => render());
 
 function renderPartners(primary: Pokemon, level: number, ivs: number[], held: ReturnType<typeof mergeHeldItems>, nature: number): void {
   const by = rankSel.value === "total" ? "total" : Number(rankSel.value);
   const top = rankPartners(primary, dex, {
-    level, ivs, rankBy: by, hideMax: maxChk.checked, limit: 10,
+    level, ivs, rankBy: by, hideMax: maxChk.checked, hideMega: megaChk.checked, limit: 10,
     type: (typeSel.value || undefined) as PokemonType | undefined,
     natureMultiplier: i => natureMultiplier(NATURES[nature], i),
     baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },

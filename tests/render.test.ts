@@ -19,6 +19,7 @@ const dex = [
   { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto", canEvolve: false, isMax: false },
   { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false },
   { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
+  { name: "Mega Mon (Mega X)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Mega Mon", canEvolve: false, isMax: false },
   { name: "Gmax Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
   { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false },
   { name: "Brute", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Hustle", abilities: { regular: ["Huge Power", "Pure Power"], hidden: "Wonder Guard" }, fusionName: "Brute", canEvolve: false, isMax: false },
@@ -928,12 +929,19 @@ describe("best partner search", () => {
     box.dispatchEvent(new Event("change", { bubbles: true }));
   };
 
+  const hideMega = (on: boolean) => {
+    const box = $("#rank-hidemega") as HTMLInputElement;
+    box.checked = on;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
   beforeEach(() => {
     resetCalculator();
     pick("#primary", "safe");
     choose("rank-by", "total");
     choose("rank-type", "");
     hideMax(false);
+    hideMega(false);
   });
 
   it("lists at most ten partners, best total first", () => {
@@ -957,6 +965,15 @@ describe("best partner search", () => {
     expect(rows().length).toBeGreaterThan(0);
     choose("rank-type", "Dragon");
     expect($("#partner-body")?.textContent).toBe("No partners match these filters.");
+  });
+
+  it("hides Mega forms only when asked to", () => {
+    expect(rowNames()).toContain("Mega Mon (Mega X)");
+    hideMega(true);
+    expect(rowNames()).not.toContain("Mega Mon (Mega X)");
+    expect(rowNames()).toContain("Gmax Mon");
+    hideMega(false);
+    expect(rowNames()).toContain("Mega Mon (Mega X)");
   });
 
   it("shows the same stats as the calculator for the same pair", () => {

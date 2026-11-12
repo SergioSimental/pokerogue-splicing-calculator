@@ -10,9 +10,15 @@ export interface PartnerOptions {
   /** Keep only partners whose fused Pokémon has this type. */
   type?: PokemonType;
   hideMax?: boolean;
+  hideMega?: boolean;
   baseItems?: BaseStatItems;
   heldFor: (statIndex: number) => HeldStatItems;
   limit: number;
+}
+
+/** Mega forms are named "X (Mega)", "X (Mega X)", "X (Mega Curly)" and so on; species like Meganium never have the bracket. */
+export function isMegaForm(pokemon: Pokemon): boolean {
+  return /\(Mega( [^)]+)?\)$/.test(pokemon.name);
 }
 
 export interface Partner {
@@ -28,6 +34,7 @@ export function rankPartners(primary: Pokemon, dex: Pokemon[], o: PartnerOptions
   const out: Partner[] = [];
   for (const secondary of dex) {
     if (o.hideMax && secondary.isMax) continue;
+    if (o.hideMega && isMegaForm(secondary)) continue;
     const f = fuse(primary, secondary, o.baseItems);
     if (o.type && !f.types.includes(o.type)) continue;
     const stats = f.stats.map((v, i) => statAtLevel(i, v, o.level, o.ivs[i] ?? 0, o.natureMultiplier(i), o.heldFor(i)));

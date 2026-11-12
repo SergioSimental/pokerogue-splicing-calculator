@@ -295,15 +295,16 @@ function render() {
 const rankSel = el("rank-by");
 const typeSel = el("rank-type");
 const maxChk = el("rank-hidemax");
+const megaChk = el("rank-hidemega");
 const partnerBody = el("partner-body");
 for (const t of Object.keys(COLORS))
     typeSel.append(new Option(t, t));
-for (const c of [rankSel, typeSel, maxChk])
+for (const c of [rankSel, typeSel, maxChk, megaChk])
     c.addEventListener("change", () => render());
 function renderPartners(primary, level, ivs, held, nature) {
     const by = rankSel.value === "total" ? "total" : Number(rankSel.value);
     const top = rankPartners(primary, dex, {
-        level, ivs, rankBy: by, hideMax: maxChk.checked, limit: 10,
+        level, ivs, rankBy: by, hideMax: maxChk.checked, hideMega: megaChk.checked, limit: 10,
         type: (typeSel.value || undefined),
         natureMultiplier: i => natureMultiplier(NATURES[nature], i),
         baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },

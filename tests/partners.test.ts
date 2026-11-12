@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fuse, statAtLevel } from "../src/fuse.js";
-import { rankPartners, type PartnerOptions } from "../src/partners.js";
+import { isMegaForm, rankPartners, type PartnerOptions } from "../src/partners.js";
 import type { Pokemon } from "../src/types.js";
 
 const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"], isMax = false): Pokemon => ({
@@ -88,5 +88,25 @@ describe("rankPartners", () => {
     const before = JSON.stringify(dex);
     names();
     expect(JSON.stringify(dex)).toBe(before);
+  });
+});
+
+describe("isMegaForm and hiding Mega forms", () => {
+  const named = (name: string) => mon(name, ["Normal"], [50, 50, 50, 50, 50, 50]);
+
+  it("recognises every Mega naming style and nothing else", () => {
+    for (const name of ["Venusaur (Mega)", "Charizard (Mega X)", "Garchomp (Mega Z)", "Tatsugiri (Mega Curly)"]) expect(isMegaForm(named(name)), name).toBe(true);
+    for (const name of ["Meganium", "Yanmega", "Groudon (Primal)", "Venusaur (G-Max)", "Mega Man (Alolan)", "Mega"]) expect(isMegaForm(named(name)), name).toBe(false);
+  });
+
+  it("hides them from the ranking, independently of Max forms", () => {
+    const mega = mon("Zed (Mega)", ["Dragon"], [250, 250, 250, 250, 250, 250]);
+    const all = [primary, tank, giant, mega];
+    const list = (o: Partial<PartnerOptions>) => rankPartners(primary, all, { ...base, ...o }).map(p => p.secondary.name);
+    expect(list({})).toContain("Zed (Mega)");
+    expect(list({ hideMega: true })).not.toContain("Zed (Mega)");
+    expect(list({ hideMega: true })).toContain("Giant");
+    expect(list({ hideMax: true })).toContain("Zed (Mega)");
+    expect(list({ hideMax: true })).not.toContain("Giant");
   });
 });
