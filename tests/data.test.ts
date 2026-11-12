@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { evioliteMultiplier, speciesItemsOf } from "../src/heldItems.js";
+import { isMegaForm, isSpecialForm } from "../src/partners.js";
 import type { Pokemon } from "../src/types.js";
 
 const TYPES = new Set([
@@ -154,5 +155,27 @@ describe("PokeRogue's own Eviolite and species item cases, on the real data", ()
     expect(ids("Ditto")).toEqual(["metal-powder", "quick-powder"]);
     expect(ids("Clamperl")).toEqual(["deep-sea-tooth", "deep-sea-scale"]);
     expect(ids("Raichu")).toEqual([]);
+  });
+});
+
+describe("Mega forms in the real data", () => {
+  it("are found by their name and never by a species that merely contains the letters", () => {
+    const megas = dex.filter(isMegaForm).map(p => p.name);
+    expect(megas.length).toBeGreaterThanOrEqual(90);
+    for (const name of ["Venusaur (Mega)", "Charizard (Mega X)", "Charizard (Mega Y)", "Tatsugiri (Mega Curly)"]) expect(megas).toContain(name);
+    for (const name of ["Meganium", "Yanmega", "Groudon (Primal)", "Venusaur (G-Max)"]) expect(megas).not.toContain(name);
+    expect(dex.filter(p => /\(Mega/.test(p.name)).length).toBe(megas.length);
+    expect(dex.some(p => isMegaForm(p) && p.isMax)).toBe(false);
+  });
+});
+
+describe("Special forms in the real data", () => {
+  it("are every bracketed form that is not Mega or Max", () => {
+    const special = dex.filter(isSpecialForm).map(p => p.name);
+    for (const name of ["Groudon (Primal)", "Kyogre (Primal)", "Necrozma (Ultra)"]) expect(special).toContain(name);
+    for (const name of ["Venusaur (Mega)", "Venusaur (G-Max)", "Eternatus (E-Max)", "Garchomp", "Alolan Marowak"]) expect(special).not.toContain(name);
+    expect(dex.some(p => isSpecialForm(p) && (isMegaForm(p) || p.isMax))).toBe(false);
+    expect(special.length).toBeGreaterThan(100);
+    for (const p of dex) expect(isSpecialForm(p) || isMegaForm(p) || p.isMax || !/\(/.test(p.name), p.name).toBe(true);
   });
 });
