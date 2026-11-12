@@ -3,6 +3,13 @@ import { fuse, statAtLevel } from "./fuse.js";
 export function isMegaForm(pokemon) {
     return /\(Mega( [^)]+)?\)$/.test(pokemon.name);
 }
+/**
+ * Any other alternate form, which the data names with a bracket (Primal, Ultra, Origin Forme, Therian Forme, Terastal ...).
+ * Mega and Max forms have their own filters, and regional forms such as Alolan Marowak carry no bracket, so they stay.
+ */
+export function isSpecialForm(pokemon) {
+    return /\(.+\)$/.test(pokemon.name) && !pokemon.isMax && !isMegaForm(pokemon);
+}
 /** Fuse the primary with every Pokémon in the dex and return the best partners first. */
 export function rankPartners(primary, dex, o) {
     const out = [];
@@ -10,6 +17,8 @@ export function rankPartners(primary, dex, o) {
         if (o.hideMax && secondary.isMax)
             continue;
         if (o.hideMega && isMegaForm(secondary))
+            continue;
+        if (o.hideSpecial && isSpecialForm(secondary))
             continue;
         const f = fuse(primary, secondary, o.baseItems);
         if (o.type && !f.types.includes(o.type))

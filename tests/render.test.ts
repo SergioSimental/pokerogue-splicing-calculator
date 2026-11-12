@@ -19,8 +19,9 @@ const dex = [
   { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto", canEvolve: false, isMax: false },
   { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false },
   { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
-  { name: "Mega Mon (Mega X)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Mega Mon", canEvolve: false, isMax: false },
-  { name: "Gmax Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
+  { name: "Mega Mon (Mega X)", stats: [190, 190, 190, 190, 190, 190], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Mega Mon", canEvolve: false, isMax: false },
+  { name: "Odd Mon (Primal)", stats: [200, 200, 200, 200, 200, 200], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Odd Mon", canEvolve: false, isMax: false },
+  { name: "Gmax Mon", stats: [180, 180, 180, 180, 180, 180], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
   { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false },
   { name: "Brute", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Hustle", abilities: { regular: ["Huge Power", "Pure Power"], hidden: "Wonder Guard" }, fusionName: "Brute", canEvolve: false, isMax: false },
   { name: "Echo", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Huge Power", abilities: { regular: ["Huge Power"], hidden: null }, fusionName: "Echo", canEvolve: false, isMax: false },
@@ -929,6 +930,12 @@ describe("best partner search", () => {
     box.dispatchEvent(new Event("change", { bubbles: true }));
   };
 
+  const hideSpecial = (on: boolean) => {
+    const box = $("#rank-hidespecial") as HTMLInputElement;
+    box.checked = on;
+    box.dispatchEvent(new Event("change", { bubbles: true }));
+  };
+
   const hideMega = (on: boolean) => {
     const box = $("#rank-hidemega") as HTMLInputElement;
     box.checked = on;
@@ -942,6 +949,7 @@ describe("best partner search", () => {
     choose("rank-type", "");
     hideMax(false);
     hideMega(false);
+    hideSpecial(false);
   });
 
   it("lists at most ten partners, best total first", () => {
@@ -974,6 +982,16 @@ describe("best partner search", () => {
     expect(rowNames()).toContain("Gmax Mon");
     hideMega(false);
     expect(rowNames()).toContain("Mega Mon (Mega X)");
+  });
+
+  it("hides special forms only when asked to", () => {
+    expect(rowNames()).toContain("Odd Mon (Primal)");
+    hideSpecial(true);
+    expect(rowNames()).not.toContain("Odd Mon (Primal)");
+    expect(rowNames()).toContain("Mega Mon (Mega X)");
+    expect(rowNames()).toContain("Gmax Mon");
+    hideSpecial(false);
+    expect(rowNames()).toContain("Odd Mon (Primal)");
   });
 
   it("shows the same stats as the calculator for the same pair", () => {
