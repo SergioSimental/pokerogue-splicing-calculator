@@ -366,7 +366,8 @@ function writeLink(primary, secondary) {
     if (applying)
         return;
     try {
-        history.replaceState(null, "", `${location.pathname}?${encodeSetup(currentSetup(primary, secondary))}`);
+        // The fragment stays, so a jump link (#partners) is not lost when a setting changes.
+        history.replaceState(null, "", `${location.pathname}?${encodeSetup(currentSetup(primary, secondary))}${location.hash}`);
     }
     catch {
         // Some browsers refuse this (a file:// page, for example). The page still works without it.
@@ -450,7 +451,8 @@ function loadLink() {
 }
 let copyTimer;
 copyButton.addEventListener("click", async () => {
-    const link = location.href;
+    // A shared link opens at the top of the page, so the jump fragment is left off.
+    const link = location.href.split("#")[0] ?? location.href;
     let label = "Copied!";
     try {
         await navigator.clipboard.writeText(link);

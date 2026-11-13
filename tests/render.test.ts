@@ -1215,9 +1215,22 @@ describe("shareable links", () => {
     const button = $("#copy-link") as HTMLButtonElement;
     button.click();
     await vi.waitFor(() => expect(button.textContent).toBe("Copied!"));
-    expect(writeText).toHaveBeenCalledWith(location.href);
+    expect(writeText).toHaveBeenCalledWith(location.href.split("#")[0]);
     expect(location.href).toContain("l=91");
     expect(note().hidden).toBe(true);
+  });
+
+  it("copies the link without the jump fragment", async () => {
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    setNumber("level", "92");
+    location.hash = "#partners";
+    ($("#copy-link") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+    const copied = String(writeText.mock.calls[0]?.[0]);
+    expect(copied).toContain("l=92");
+    expect(copied).not.toContain("#");
+    history.replaceState(null, "", location.pathname);
   });
 
   it("shows Copied! for two seconds", async () => {
@@ -1253,6 +1266,10 @@ describe("shareable links", () => {
     expect(location.search).toContain("l=60");
     setNumber("level", "61");
     expect(location.search).toContain("l=61");
+    expect(location.hash).toBe("#partners");
+    pick("#secondary", "echo");
+    ($("#swap") as HTMLButtonElement).click();
+    expect(location.hash).toBe("#partners");
     history.replaceState(null, "", location.pathname);
   });
 });
