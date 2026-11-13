@@ -9,6 +9,7 @@ import {
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { rankPartners } from "./partners.js";
+import { decodeSetup, emptyItems, encodeSetup, type Setup, type SharedSetup } from "./share.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
 const COLORS: Record<PokemonType, string> = {
@@ -332,6 +333,7 @@ function render(): void {
     legend,
   );
   renderPartners(primary, level, ivs, held, natureBox.index);
+  writeLink(primary, secondary);
 }
 
 const rankSel = el<HTMLSelectElement>("rank-by");
@@ -375,6 +377,127 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
   partnerBody.replaceChildren(top.length ? table : h("p", undefined, "No partners match these filters."));
 }
 
+// ---- Shareable links: the current build lives in the page's query string ----
+
+const copyButton = el<HTMLButtonElement>("copy-link");
+const shareNote = el<HTMLElement>("share-note");
+/** True while a link is being loaded, so half-loaded states are not written back to the address bar. */
+let applying = false;
+
+function currentSetup(primary: Pokemon, secondary: Pokemon): Setup {
+  const ivs = ivInputs.map(input => clampIv(Number(input.value)));
+  const choice = abilityList[Number(abilitySelect.value)];
+  return {
+    primary: primary.name,
+    secondary: secondary.name,
+    level: clampLevel(Number(levelInput.value)),
+    nature: NATURES[natureBox.index]?.name ?? "",
+    ivs,
+    // The first ability is the default, so it is left out of the link.
+    ability: choice && Number(abilitySelect.value) > 0 ? choice.name : "",
+    passive: passiveToggle.checked,
+    primaryItems: readHeld(primaryItems, i => ivs[i] ?? 0),
+    secondaryItems: readHeld(secondaryItems, i => ivs[i] ?? 0),
+  };
+}
+
+/** Keeps the address bar in step with the page, so its address can be copied at any time. */
+function writeLink(primary: Pokemon, secondary: Pokemon): void {
+  if (applying) return;
+  try {
+    history.replaceState(null, "", `${location.pathname}?${encodeSetup(currentSetup(primary, secondary))}`);
+  } catch {
+    // Some browsers refuse this (a file:// page, for example). The page still works without it.
+  }
+}
+
+function setHeld(group: HeldGroup, items: HeldItems): void {
+  group.soulDew.value = String(items.soulDew);
+  group.machoBrace.value = String(items.machoBrace);
+  group.vitamins.forEach((input, i) => {
+    input.value = String(items.vitamins[i] ?? 0);
+  });
+  group.sweetJuice.checked = items.sweetJuice;
+  group.foulJuice.checked = items.foulJuice;
+  group.oldGateau.checked = items.oldGateau;
+  group.eviolite.checked = items.eviolite;
+}
+
+/** Puts a link's setup into the page. Returns what the link asked for that this data does not have. */
+function applySetup(setup: SharedSetup): string[] {
+  const unused: string[] = [];
+  applying = true;
+  try {
+    const find = (name: string | undefined, label: string, box: Combobox, list: readonly { name: string }[]) => {
+      if (name === undefined) return;
+      const index = list.findIndex(entry => entry.name.toLowerCase() === name.toLowerCase());
+      if (index < 0) unused.push(`${label} "${name}"`);
+      else box.setIndex(index);
+    };
+    find(setup.primary, "primary", primaryBox, dex);
+    find(setup.secondary, "secondary", secondaryBox, dex);
+    find(setup.nature, "nature", natureBox, NATURES);
+    if (setup.level !== undefined) levelInput.value = String(setup.level);
+    setup.ivs?.forEach((value, i) => {
+      const input = ivInputs[i];
+      if (input) input.value = String(value);
+    });
+    passiveToggle.checked = setup.passive ?? false;
+    setHeld(primaryItems, setup.primaryItems ?? emptyItems());
+    setHeld(secondaryItems, setup.secondaryItems ?? emptyItems());
+    clampVitamins();
+    // A first pass builds this secondary's ability list and shows the species items its Pokémon can use.
+    render();
+    abilitySelect.value = "0"; // a link without an ability means the first one, even when the secondary did not change
+    if (setup.ability) {
+      const index = abilityList.findIndex(choice => choice.name.toLowerCase() === setup.ability?.toLowerCase());
+      if (index < 0) unused.push(`ability "${setup.ability}"`);
+      else abilitySelect.value = String(index);
+    }
+    for (const [group, items, label] of [[primaryItems, setup.primaryItems, "primary"], [secondaryItems, setup.secondaryItems, "secondary"]] as const) {
+      for (const id of items?.species ?? []) {
+        const entry = group.species.get(id);
+        if (entry && !entry.row.hidden) entry.box.checked = true;
+        else unused.push(`${id} for the ${label} Pokémon`);
+      }
+    }
+  } finally {
+    applying = false;
+  }
+  render();
+  return unused;
+}
+
+function showNote(text: string): void {
+  shareNote.textContent = text;
+  shareNote.hidden = text === "";
+}
+
+/** Loads the build in the address bar, if it has one. */
+function loadLink(): void {
+  if (location.search.length <= 1) return;
+  const unused = applySetup(decodeSetup(location.search));
+  showNote(unused.length ? `Part of this link could not be used and was left at its default: ${unused.join(", ")}.` : "");
+}
+
+let copyTimer: ReturnType<typeof setTimeout> | undefined;
+copyButton.addEventListener("click", async () => {
+  const link = location.href;
+  let label = "Copied!";
+  try {
+    await navigator.clipboard.writeText(link);
+    showNote("");
+  } catch {
+    // No clipboard access (an insecure page, or the browser said no): show the link to copy by hand.
+    label = "Copy link";
+    showNote(`Copy this link: ${link}`);
+  }
+  copyButton.textContent = label;
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(() => { copyButton.textContent = "Copy link"; }, 2000);
+});
+window.addEventListener("popstate", loadLink);
+
 async function init(): Promise<void> {
   try {
     const res = await fetch("data/pokemon.json");
@@ -409,6 +532,7 @@ async function init(): Promise<void> {
     swapHeldItems();
     render();
   };
+  loadLink();
   render();
 }
 

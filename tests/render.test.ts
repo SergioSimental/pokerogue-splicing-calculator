@@ -1030,3 +1030,229 @@ describe("best partner search", () => {
     expect($("#partner-body script")).toBeNull();
   });
 });
+
+describe("shareable links", () => {
+  const query = () => new URLSearchParams(location.search);
+  const load = (q: string) => {
+    history.replaceState(null, "", `/?${q}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+  const value = (id: string) => ($(`#${id}`) as HTMLInputElement).value;
+  const checked = (id: string) => ($(`#${id}`) as HTMLInputElement).checked;
+  const note = () => $("#share-note") as HTMLElement;
+  const ability = () => {
+    const select = $("#ability") as HTMLSelectElement;
+    return select.options[select.selectedIndex]?.textContent;
+  };
+
+  beforeEach(() => {
+    resetCalculator();
+    pick("#primary", "safe");
+    pick("#secondary", "colossus");
+    load("");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+
+  it("keeps the address bar in step with every setting", () => {
+    setNumber("level", "77");
+    expect(query().get("l")).toBe("77");
+    pick("#nature", "jolly");
+    expect(query().get("n")).toBe("Jolly");
+    setNumber("iv3", "12");
+    expect(query().get("iv")).toBe("31,31,31,12,31,31");
+    tick("passive-unlocked");
+    expect(query().get("pp")).toBe("1");
+    setNumber("soul-dew", "4");
+    setNumber("vitamin5", "9");
+    tick("old-gateau");
+    expect(query().get("pi")).toBe("sd4,v5-9,gateau");
+    setNumber("secondary-macho-brace", "20");
+    tick("secondary-eviolite");
+    expect(query().get("si")).toBe("mb20,eviolite");
+    expect(query().get("p")).toBe("Safe Mon");
+    expect(query().get("s")).toBe("Colossus");
+  });
+
+  it("leaves out what is empty", () => {
+    expect(query().has("pi")).toBe(false);
+    expect(query().has("si")).toBe(false);
+    expect(query().has("pp")).toBe(false);
+    expect(query().has("ab")).toBe(false);
+  });
+
+  it("follows the picks, the swap and the best partner list", () => {
+    ($("#swap") as HTMLButtonElement).click();
+    expect([query().get("p"), query().get("s")]).toEqual(["Colossus", "Safe Mon"]);
+    ($("#swap") as HTMLButtonElement).click();
+    [...document.querySelectorAll<HTMLElement>("#partner-body tr[tabindex]")].find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
+    expect(query().get("s")).toBe("Echo");
+  });
+
+  it("loads a full build from a link", () => {
+    load("p=Ditto&s=Brute&l=63&n=Jolly&iv=31,20,10,31,5,31&ab=Wonder%20Guard&pp=1&pi=sd3,v1-5,sweet,gateau,metal-powder&si=mb50,foul,eviolite");
+    expect(value("primary")).toBe("Ditto");
+    expect(value("secondary")).toBe("Brute");
+    expect(value("level")).toBe("63");
+    expect(value("nature")).toContain("Jolly");
+    expect([0, 1, 2, 3, 4, 5].map(i => value(`iv${i}`))).toEqual(["31", "20", "10", "31", "5", "31"]);
+    expect(ability()).toBe("Wonder Guard (Hidden)");
+    expect(checked("passive-unlocked")).toBe(true);
+    expect(value("soul-dew")).toBe("3");
+    expect(value("vitamin1")).toBe("5");
+    expect(checked("sweet-shuckle-juice")).toBe(true);
+    expect(checked("item-metal-powder")).toBe(true);
+    expect(value("secondary-macho-brace")).toBe("50");
+    expect(checked("secondary-foul-shuckle-juice")).toBe(true);
+    expect(checked("secondary-eviolite")).toBe(true);
+    expect(checked("old-gateau")).toBe(true);
+    expect(checked("secondary-old-gateau")).toBe(false);
+    expect(checked("eviolite")).toBe(false);
+    expect(note().hidden).toBe(true);
+    // The loaded build is written straight back unchanged.
+    expect(query().get("pi")).toBe("sd3,v1-5,sweet,gateau,metal-powder");
+    expect(query().get("ab")).toBe("Wonder Guard");
+  });
+
+  it("gives the same numbers whether a build is typed in or loaded from its link", () => {
+    pick("#primary", "ditto");
+    pick("#secondary", "brute");
+    setNumber("level", "63");
+    setNumber("iv2", "10");
+    pick("#nature", "jolly");
+    tick("passive-unlocked");
+    setNumber("soul-dew", "3");
+    setNumber("vitamin1", "5");
+    tick("item-metal-powder");
+    setNumber("secondary-macho-brace", "50");
+    const typedIn = { stats: shown(), total: totalLine(), arrows: arrows(), link: location.search };
+    resetCalculator();
+    pick("#primary", "safe");
+    pick("#secondary", "colossus");
+    expect(shown()).not.toEqual(typedIn.stats);
+    load(typedIn.link.slice(1));
+    expect(shown()).toEqual(typedIn.stats);
+    expect(totalLine()).toBe(typedIn.total);
+    expect(arrows()).toEqual(typedIn.arrows);
+    expect(location.search).toBe(typedIn.link);
+  });
+
+  it("matches names without regard to capitals", () => {
+    load("p=safe mon&s=ECHO&n=jolly");
+    expect(value("primary")).toBe("Safe Mon");
+    expect(value("secondary")).toBe("Echo");
+    expect(value("nature")).toContain("Jolly");
+    expect(note().hidden).toBe(true);
+  });
+
+  it("writes only the finished build to the address bar while loading a link", () => {
+    const spy = vi.spyOn(history, "replaceState");
+    load("p=Ditto&s=Brute&ab=Pure%20Power&pi=metal-powder,v1-5");
+    const written = spy.mock.calls.map(call => String(call[2])).filter(url => url.includes("?p="));
+    spy.mockRestore();
+    expect(written.length).toBeGreaterThan(0);
+    for (const url of written) expect(url).toContain("ab=Pure%20Power");
+  });
+
+  it("returns to defaults for anything the link leaves out", () => {
+    setNumber("soul-dew", "5");
+    tick("passive-unlocked");
+    load("p=Raichu&s=Echo");
+    expect(value("soul-dew")).toBe("0");
+    expect(checked("passive-unlocked")).toBe(false);
+    expect(value("primary")).toBe("Raichu");
+  });
+
+  it("picks the first ability again when the link names none, even for the same secondary", () => {
+    load("p=Safe Mon&s=Brute&ab=Pure%20Power");
+    expect(ability()).toBe("Pure Power");
+    load("p=Safe Mon&s=Brute");
+    expect(ability()).toBe("Huge Power");
+  });
+
+  it("holds vitamins to the primary's IV and counts to their limits", () => {
+    load("p=Safe Mon&s=Colossus&iv=31,5,31,31,31,31&pi=v1-20,mb999,sd99");
+    expect(value("vitamin1")).toBe("5");
+    expect(value("macho-brace")).toBe("50");
+    expect(value("soul-dew")).toBe("10");
+  });
+
+  it("says what it could not use and keeps the rest", () => {
+    load("p=Nobody&s=Echo&n=Grumpy&l=70&ab=Telepathy&pi=thick-club,sd2");
+    expect(value("primary")).not.toBe("Nobody");
+    expect(value("secondary")).toBe("Echo");
+    expect(value("level")).toBe("70");
+    expect(value("soul-dew")).toBe("2");
+    expect(note().hidden).toBe(false);
+    expect(note().textContent).toContain('primary "Nobody"');
+    expect(note().textContent).toContain('nature "Grumpy"');
+    expect(note().textContent).toContain('ability "Telepathy"');
+    expect(note().textContent).toContain("thick-club for the primary Pokémon");
+  });
+
+  it("clears the note once a good link is loaded", () => {
+    load("p=Nobody&s=Echo");
+    expect(note().hidden).toBe(false);
+    load("p=Raichu&s=Echo");
+    expect(note().hidden).toBe(true);
+  });
+
+  it("ignores a damaged link and still shows a result", () => {
+    load("p=%E0%A4%A&l=abc&iv=1,2&pi=%%%&zzz");
+    expect($("#result h2")).not.toBeNull();
+    expect(value("level")).toBe("50");
+  });
+
+  it("shows names from a link as text, never as markup", () => {
+    load(`p=${encodeURIComponent('<img src=x onerror="alert(1)">')}&s=Echo`);
+    expect(note().querySelector("img")).toBeNull();
+    expect(note().textContent).toContain("<img src=x");
+  });
+
+  it("copies the link and says so", async () => {
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    setNumber("level", "91");
+    const button = $("#copy-link") as HTMLButtonElement;
+    button.click();
+    await vi.waitFor(() => expect(button.textContent).toBe("Copied!"));
+    expect(writeText).toHaveBeenCalledWith(location.href);
+    expect(location.href).toContain("l=91");
+    expect(note().hidden).toBe(true);
+  });
+
+  it("shows Copied! for two seconds", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      vi.stubGlobal("navigator", { clipboard: { writeText: async () => undefined } });
+      const button = $("#copy-link") as HTMLButtonElement;
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(button.textContent).toBe("Copied!");
+      await vi.advanceTimersByTimeAsync(1900);
+      expect(button.textContent).toBe("Copied!");
+      await vi.advanceTimersByTimeAsync(200);
+      expect(button.textContent).toBe("Copy link");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the link to copy by hand when the clipboard is not available", async () => {
+    vi.stubGlobal("navigator", { clipboard: { writeText: async () => { throw new Error("denied"); } } });
+    const button = $("#copy-link") as HTMLButtonElement;
+    button.click();
+    await vi.waitFor(() => expect(note().hidden).toBe(false));
+    expect(note().textContent).toBe(`Copy this link: ${location.href}`);
+    expect(button.textContent).toBe("Copy link");
+  });
+
+  it("does not disturb the jump links", () => {
+    expect(($(".jump") as HTMLAnchorElement).getAttribute("href")).toBe("#partners");
+    setNumber("level", "60");
+    location.hash = "#partners";
+    expect(location.search).toContain("l=60");
+    setNumber("level", "61");
+    expect(location.search).toContain("l=61");
+    history.replaceState(null, "", location.pathname);
+  });
+});
