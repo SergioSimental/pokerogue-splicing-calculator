@@ -106,8 +106,12 @@ button{cursor:pointer;font-size:1.2rem}
 table.partners{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 table.partners th,table.partners td{padding:.3rem .35rem;text-align:right;border-bottom:1px solid rgba(128,128,128,.25)}
 table.partners th:nth-child(-n+3),table.partners td:nth-child(-n+3){text-align:left}
-table.partners tr[tabindex]{cursor:pointer}
-table.partners tr[tabindex]:hover,table.partners tr[tabindex]:focus{background:rgba(128,128,128,.15);outline:none}
+table.partners tr.prow{cursor:pointer}
+table.partners tr.prow:hover,table.partners tr.prow:focus-within{background:rgba(128,128,128,.15)}
+.pickbtn{font:inherit;font-weight:600;color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.pickbtn:focus-visible{outline:2px solid currentColor;outline-offset:2px;border-radius:3px}
+.pickbtn[aria-current=true]{text-decoration:underline solid}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 table.partners .hot{font-weight:700;background:rgba(255,200,0,.18)}
 table.partners .pname{font-weight:600}
 .ptypes .type{display:inline-block;color:#fff;border-radius:999px;padding:0 .45rem;margin-right:.2rem;font-size:.72rem}

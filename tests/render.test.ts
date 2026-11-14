@@ -917,7 +917,7 @@ describe("abilities that change a stat by themselves", () => {
 });
 
 describe("best partner search", () => {
-  const rows = () => [...document.querySelectorAll<HTMLElement>("#partner-body tr[tabindex]")];
+  const rows = () => [...document.querySelectorAll<HTMLElement>("#partner-body tr.prow")];
   const rowNames = () => rows().map(r => r.querySelector(".pname")?.textContent);
   const choose = (id: string, value: string) => {
     const select = $(`#${id}`) as HTMLSelectElement;
@@ -1011,6 +1011,49 @@ describe("best partner search", () => {
     expect(rows()[0]?.textContent).not.toBe(atLevel100);
   });
 
+  it("makes each name a real button that picks the partner", () => {
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>("#partner-body tr.prow button.pickbtn")];
+    expect(buttons.length).toBe(rows().length);
+    for (const button of buttons) {
+      expect(button.tagName).toBe("BUTTON");
+      expect(button.type).toBe("button");
+      expect(button.closest("td")?.className).toBe("pname");
+      expect(button.getAttribute("aria-label")).toBe(`Use ${button.textContent} as the secondary`);
+    }
+    // A button is the one thing in each row that takes keyboard focus; the row itself does not.
+    expect(document.querySelectorAll("#partner-body [tabindex]").length).toBe(0);
+    buttons.find(b => b.textContent === "Echo")?.click();
+    expect($("#result .parents")?.textContent).toBe("Safe Mon + Echo");
+  });
+
+  it("returns keyboard focus to the chosen button after the list is redrawn", () => {
+    const echo = () => [...document.querySelectorAll<HTMLButtonElement>("#partner-body button.pickbtn")].find(b => b.textContent === "Echo");
+    echo()?.focus();
+    echo()?.click();
+    expect(document.activeElement).toBe(echo());
+    expect(document.activeElement?.textContent).toBe("Echo");
+  });
+
+  it("marks the current secondary and moves the mark when another is chosen", () => {
+    const marked = () => [...document.querySelectorAll("#partner-body [aria-current=true]")].map(b => b.textContent);
+    pick("#secondary", "colossus");
+    expect(marked()).toEqual(["Colossus"]);
+    [...document.querySelectorAll<HTMLButtonElement>("#partner-body button.pickbtn")].find(b => b.textContent === "Echo")?.click();
+    expect(marked()).toEqual(["Echo"]);
+    pick("#secondary", "brute");
+    expect(marked()).toEqual(["Brute"]);
+  });
+
+  it("describes the table and its columns for screen readers", () => {
+    choose("rank-by", "5");
+    expect($("#partner-body caption")?.textContent).toBe("Best partners for Safe Mon, ranked by Spe. Choose a name to use it as the secondary.");
+    const headers = [...document.querySelectorAll("#partner-body th")];
+    expect(headers.length).toBe(10);
+    expect(headers.every(th => th.getAttribute("scope") === "col")).toBe(true);
+    choose("rank-by", "total");
+    expect($("#partner-body caption")?.textContent).toContain("ranked by total");
+  });
+
   it("uses a clicked row as the secondary Pokémon", () => {
     rows().find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
     expect($("#result .parents")?.textContent).toBe("Safe Mon + Echo");
@@ -1084,7 +1127,7 @@ describe("shareable links", () => {
     ($("#swap") as HTMLButtonElement).click();
     expect([query().get("p"), query().get("s")]).toEqual(["Colossus", "Safe Mon"]);
     ($("#swap") as HTMLButtonElement).click();
-    [...document.querySelectorAll<HTMLElement>("#partner-body tr[tabindex]")].find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
+    [...document.querySelectorAll<HTMLElement>("#partner-body tr.prow")].find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
     expect(query().get("s")).toBe("Echo");
   });
 

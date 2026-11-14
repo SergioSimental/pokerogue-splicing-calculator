@@ -345,6 +345,9 @@ const partnerBody = el<HTMLElement>("partner-body");
 for (const t of Object.keys(COLORS)) typeSel.append(new Option(t, t));
 for (const c of [rankSel, typeSel, maxChk, megaChk, specialChk]) c.addEventListener("change", () => render());
 
+/** The partner whose button was just used, so focus can return to it after the list is redrawn. */
+let refocusPartner: string | undefined;
+
 function renderPartners(primary: Pokemon, level: number, ivs: number[], held: ReturnType<typeof mergeHeldItems>, nature: number): void {
   const by = rankSel.value === "total" ? "total" : Number(rankSel.value);
   const top = rankPartners(primary, dex, {
@@ -355,26 +358,44 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
   });
   const table = h("table", "partners");
+  const rankedBy = by === "total" ? "total" : STAT_NAMES[by] ?? "total";
+  table.append(h("caption", "sr-only", `Best partners for ${primary.name}, ranked by ${rankedBy}. Choose a name to use it as the secondary.`));
   const head = h("tr");
   head.append(h("th", undefined, "#"), h("th", undefined, "Partner"), h("th", undefined, "Types"));
   STAT_NAMES.forEach((n, i) => head.append(h("th", by === i ? "hot" : undefined, n)));
   head.append(h("th", by === "total" ? "hot" : undefined, "Total"));
+  Array.from(head.children).forEach(th => th.setAttribute("scope", "col"));
   table.append(head);
+  const current = dex[secondaryBox.index];
   top.forEach((p, n) => {
-    const tr = h("tr");
-    tr.tabIndex = 0;
-    tr.title = `Use ${p.secondary.name} as the secondary`;
-    const pick = () => { secondaryBox.setIndex(dex.indexOf(p.secondary)); render(); };
-    tr.onclick = pick;
-    tr.onkeydown = e => { if (e.key === "Enter") pick(); };
+    const tr = h("tr", "prow");
+    // The name is a real button, so keyboards and screen readers can use it. Clicking anywhere else in the row works too.
+    const choose = h("button", "pickbtn", p.secondary.name);
+    choose.type = "button";
+    choose.dataset.name = p.secondary.name;
+    choose.setAttribute("aria-label", `Use ${p.secondary.name} as the secondary`);
+    if (p.secondary === current) choose.setAttribute("aria-current", "true");
+    tr.onclick = () => {
+      refocusPartner = p.secondary.name;
+      secondaryBox.setIndex(dex.indexOf(p.secondary));
+      render();
+    };
+    const name = h("td", "pname");
+    name.append(choose);
     const types = h("td", "ptypes");
     for (const t of p.types) { const c = h("span", "type", t); c.style.background = COLORS[t]; types.append(c); }
-    tr.append(h("td", undefined, String(n + 1)), h("td", "pname", p.secondary.name), types);
+    tr.append(h("td", undefined, String(n + 1)), name, types);
     p.stats.forEach((v, i) => tr.append(h("td", by === i ? "hot" : undefined, fmt(v))));
     tr.append(h("td", by === "total" ? "hot" : undefined, fmt(p.total)));
     table.append(tr);
   });
   partnerBody.replaceChildren(top.length ? table : h("p", undefined, "No partners match these filters."));
+  // Picking a partner redraws the list, so keyboard focus goes back to the button that was used.
+  if (refocusPartner !== undefined) {
+    const name = refocusPartner;
+    refocusPartner = undefined;
+    Array.from(partnerBody.querySelectorAll<HTMLButtonElement>("button.pickbtn")).find(b => b.dataset.name === name)?.focus();
+  }
 }
 
 // ---- Shareable links: the current build lives in the page's query string ----
