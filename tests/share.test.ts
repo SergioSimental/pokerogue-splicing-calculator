@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeItems, decodeSetup, emptyItems, encodeItems, encodeSetup, type Setup } from "../src/share.js";
+import { decodeItems, decodeSetup, defaultFilters, emptyItems, encodeItems, encodeSetup, type Setup } from "../src/share.js";
 
 const items = (over: Partial<ReturnType<typeof emptyItems>> = {}) => ({ ...emptyItems(), ...over });
 
@@ -13,6 +13,7 @@ const setup: Setup = {
   passive: true,
   primaryItems: items({ soulDew: 3, vitamins: [0, 5, 0, 0, 0, 20], sweetJuice: true, species: ["thick-club"] }),
   secondaryItems: items({ machoBrace: 50, foulJuice: true, oldGateau: true, eviolite: true }),
+  filters: { rankBy: 5, type: "Dragon", ability: "Intimidate", hideMax: true, hideMega: false, hideSpecial: true },
 };
 
 describe("encodeItems and decodeItems", () => {
@@ -52,7 +53,7 @@ describe("encodeSetup and decodeSetup", () => {
   });
 
   it("round-trips a build with nothing optional", () => {
-    const plain: Setup = { ...setup, ability: "", passive: false, primaryItems: emptyItems(), secondaryItems: emptyItems() };
+    const plain: Setup = { ...setup, ability: "", passive: false, primaryItems: emptyItems(), secondaryItems: emptyItems(), filters: defaultFilters() };
     const query = encodeSetup(plain);
     expect(query).toBe("p=Garchomp&s=Charizard%20(Mega%20X)&l=87&n=Jolly&iv=31,25,0,31,12,31");
     const { ability: _ability, ...rest } = plain; // an empty ability is simply left out of the link
@@ -71,7 +72,7 @@ describe("encodeSetup and decodeSetup", () => {
   it("is safe to put after a question mark and has no characters that end a link", () => {
     const query = encodeSetup({ ...setup, primary: "A&B=C?D#E" });
     expect(query).not.toMatch(/[#\s<>"]/);
-    expect(query.split("&").length).toBe(9);
+    expect(query.split("&").length).toBe(13);
   });
 
   it("accepts a leading question mark", () => {
@@ -91,7 +92,7 @@ describe("encodeSetup and decodeSetup", () => {
     expect(damaged.nature).toBeUndefined();
     expect(damaged.ability).toBeUndefined();
     expect(damaged.passive).toBe(false);
-    expect(decodeSetup("")).toEqual({ passive: false, primaryItems: emptyItems(), secondaryItems: emptyItems() });
+    expect(decodeSetup("")).toEqual({ passive: false, primaryItems: emptyItems(), secondaryItems: emptyItems(), filters: defaultFilters() });
   });
 
   it("cuts very long names", () => {
@@ -109,7 +110,56 @@ describe("encodeSetup and decodeSetup", () => {
       { ...setup, primary: "Other" }, { ...setup, secondary: "Other" }, { ...setup, level: 88 }, { ...setup, nature: "Timid" },
       { ...setup, ivs: [30, 25, 0, 31, 12, 31] }, { ...setup, ability: "" }, { ...setup, passive: false },
       { ...setup, primaryItems: items() }, { ...setup, secondaryItems: items() },
+      { ...setup, filters: { ...setup.filters, rankBy: "total" } }, { ...setup, filters: { ...setup.filters, rankBy: 4 } },
+      { ...setup, filters: { ...setup.filters, type: "" } }, { ...setup, filters: { ...setup.filters, ability: "" } }, { ...setup, filters: { ...setup.filters, hideMax: false } },
+      { ...setup, filters: { ...setup.filters, hideMega: true } }, { ...setup, filters: { ...setup.filters, hideSpecial: false } },
     ];
     for (const v of variants) expect(encodeSetup(v)).not.toBe(base);
+  });
+});
+
+describe("partner filters in the link", () => {
+  const withFilters = (filters: Partial<Setup["filters"]>): Setup => ({ ...setup, filters: { ...defaultFilters(), ...filters } });
+  const part = (query: string, key: string) => query.split("&").find(x => x.startsWith(`${key}=`));
+
+  it("writes nothing for the defaults", () => {
+    const query = encodeSetup(withFilters({}));
+    for (const key of ["rb", "rt", "ra", "hf"]) expect(part(query, key)).toBeUndefined();
+  });
+
+  it("writes the stat by name, the type, and the hidden forms in a fixed order", () => {
+    const query = encodeSetup(withFilters({ rankBy: 5, type: "Dragon", hideSpecial: true, hideMax: true }));
+    expect(part(query, "rb")).toBe("rb=spe");
+    expect(part(query, "rt")).toBe("rt=Dragon");
+    expect(part(query, "hf")).toBe("hf=max,special");
+  });
+
+  it("reads every stat back, and every combination of hidden forms", () => {
+    for (let rankBy = 0; rankBy < 6; rankBy++) expect(decodeSetup(encodeSetup(withFilters({ rankBy }))).filters?.rankBy).toBe(rankBy);
+    for (const flags of [0, 1, 2, 3, 4, 5, 6, 7]) {
+      const f = { hideMax: !!(flags & 1), hideMega: !!(flags & 2), hideSpecial: !!(flags & 4) };
+      expect(decodeSetup(encodeSetup(withFilters(f))).filters).toEqual({ ...defaultFilters(), ...f });
+    }
+  });
+
+  it("ignores a stat or form it does not know, and reads names in any case", () => {
+    expect(decodeSetup("rb=luck&hf=max,bogus").filters).toEqual({ ...defaultFilters(), hideMax: true });
+    expect(decodeSetup("rb=SPE&hf=MEGA").filters).toEqual({ ...defaultFilters(), rankBy: 5, hideMega: true });
+    expect(decodeSetup("rb=3").filters?.rankBy).toBe("total"); // positions are not accepted
+  });
+
+  it("writes the ability name and reads it back, including spaces and apostrophes", () => {
+    for (const ability of ["Intimidate", "Thick Fat", "Dragon's Maw", "Mind's Eye"]) {
+      const query = encodeSetup(withFilters({ ability }));
+      expect(part(query, "ra")).toBe(`ra=${encodeURIComponent(ability)}`);
+      expect(query).not.toMatch(/[#\s<>"]/);
+      expect(decodeSetup(query).filters?.ability).toBe(ability);
+    }
+    expect(decodeSetup("ra=").filters?.ability).toBe("");
+  });
+
+  it("keeps a type name as written, cut to the usual length", () => {
+    expect(decodeSetup("rt=Dragon").filters?.type).toBe("Dragon");
+    expect(decodeSetup(`rt=${"x".repeat(500)}`).filters?.type.length).toBe(80);
   });
 });
