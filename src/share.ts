@@ -8,12 +8,14 @@ export interface PartnerFilters {
   rankBy: "total" | number;
   /** A type name, or empty for any type. */
   type: string;
+  /** An ability name that a partner must be able to give, or empty for any. */
+  ability: string;
   hideMax: boolean;
   hideMega: boolean;
   hideSpecial: boolean;
 }
 
-export const defaultFilters = (): PartnerFilters => ({ rankBy: "total", type: "", hideMax: false, hideMega: false, hideSpecial: false });
+export const defaultFilters = (): PartnerFilters => ({ rankBy: "total", type: "", ability: "", hideMax: false, hideMega: false, hideSpecial: false });
 
 /** Everything a shared link carries. Names (not list positions) are stored, so a link survives the data being updated. */
 export interface Setup {
@@ -100,6 +102,7 @@ export function encodeSetup(setup: Setup): string {
   const f = setup.filters;
   if (f.rankBy !== "total") parts.push(`rb=${(STAT_NAMES[f.rankBy] ?? "").toLowerCase()}`);
   if (f.type) parts.push(`rt=${enc(f.type)}`);
+  if (f.ability) parts.push(`ra=${enc(f.ability)}`);
   const hidden = FORM_KEYS.filter(key => (key === "max" ? f.hideMax : key === "mega" ? f.hideMega : f.hideSpecial));
   if (hidden.length) parts.push(`hf=${hidden.join(",")}`);
   return parts.join("&");
@@ -137,6 +140,7 @@ export function decodeSetup(query: string): SharedSetup {
   const rank = STAT_NAMES.findIndex(name => name.toLowerCase() === params.get("rb")?.toLowerCase());
   if (rank >= 0) filters.rankBy = rank;
   filters.type = text("rt") ?? "";
+  filters.ability = text("ra") ?? "";
   const hidden = (params.get("hf") ?? "").toLowerCase().split(",");
   filters.hideMax = hidden.includes("max");
   filters.hideMega = hidden.includes("mega");

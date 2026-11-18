@@ -13,7 +13,7 @@ const setup: Setup = {
   passive: true,
   primaryItems: items({ soulDew: 3, vitamins: [0, 5, 0, 0, 0, 20], sweetJuice: true, species: ["thick-club"] }),
   secondaryItems: items({ machoBrace: 50, foulJuice: true, oldGateau: true, eviolite: true }),
-  filters: { rankBy: 5, type: "Dragon", hideMax: true, hideMega: false, hideSpecial: true },
+  filters: { rankBy: 5, type: "Dragon", ability: "Intimidate", hideMax: true, hideMega: false, hideSpecial: true },
 };
 
 describe("encodeItems and decodeItems", () => {
@@ -72,7 +72,7 @@ describe("encodeSetup and decodeSetup", () => {
   it("is safe to put after a question mark and has no characters that end a link", () => {
     const query = encodeSetup({ ...setup, primary: "A&B=C?D#E" });
     expect(query).not.toMatch(/[#\s<>"]/);
-    expect(query.split("&").length).toBe(12);
+    expect(query.split("&").length).toBe(13);
   });
 
   it("accepts a leading question mark", () => {
@@ -111,7 +111,7 @@ describe("encodeSetup and decodeSetup", () => {
       { ...setup, ivs: [30, 25, 0, 31, 12, 31] }, { ...setup, ability: "" }, { ...setup, passive: false },
       { ...setup, primaryItems: items() }, { ...setup, secondaryItems: items() },
       { ...setup, filters: { ...setup.filters, rankBy: "total" } }, { ...setup, filters: { ...setup.filters, rankBy: 4 } },
-      { ...setup, filters: { ...setup.filters, type: "" } }, { ...setup, filters: { ...setup.filters, hideMax: false } },
+      { ...setup, filters: { ...setup.filters, type: "" } }, { ...setup, filters: { ...setup.filters, ability: "" } }, { ...setup, filters: { ...setup.filters, hideMax: false } },
       { ...setup, filters: { ...setup.filters, hideMega: true } }, { ...setup, filters: { ...setup.filters, hideSpecial: false } },
     ];
     for (const v of variants) expect(encodeSetup(v)).not.toBe(base);
@@ -124,7 +124,7 @@ describe("partner filters in the link", () => {
 
   it("writes nothing for the defaults", () => {
     const query = encodeSetup(withFilters({}));
-    for (const key of ["rb", "rt", "hf"]) expect(part(query, key)).toBeUndefined();
+    for (const key of ["rb", "rt", "ra", "hf"]) expect(part(query, key)).toBeUndefined();
   });
 
   it("writes the stat by name, the type, and the hidden forms in a fixed order", () => {
@@ -146,6 +146,16 @@ describe("partner filters in the link", () => {
     expect(decodeSetup("rb=luck&hf=max,bogus").filters).toEqual({ ...defaultFilters(), hideMax: true });
     expect(decodeSetup("rb=SPE&hf=MEGA").filters).toEqual({ ...defaultFilters(), rankBy: 5, hideMega: true });
     expect(decodeSetup("rb=3").filters?.rankBy).toBe("total"); // positions are not accepted
+  });
+
+  it("writes the ability name and reads it back, including spaces and apostrophes", () => {
+    for (const ability of ["Intimidate", "Thick Fat", "Dragon's Maw", "Mind's Eye"]) {
+      const query = encodeSetup(withFilters({ ability }));
+      expect(part(query, "ra")).toBe(`ra=${encodeURIComponent(ability)}`);
+      expect(query).not.toMatch(/[#\s<>"]/);
+      expect(decodeSetup(query).filters?.ability).toBe(ability);
+    }
+    expect(decodeSetup("ra=").filters?.ability).toBe("");
   });
 
   it("keeps a type name as written, cut to the usual length", () => {

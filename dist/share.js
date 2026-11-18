@@ -1,7 +1,7 @@
 import { clampIv, clampLevel } from "./fuse.js";
 import { clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS } from "./heldItems.js";
 import { STAT_NAMES } from "./types.js";
-export const defaultFilters = () => ({ rankBy: "total", type: "", hideMax: false, hideMega: false, hideSpecial: false });
+export const defaultFilters = () => ({ rankBy: "total", type: "", ability: "", hideMax: false, hideMega: false, hideSpecial: false });
 const FORM_KEYS = ["max", "mega", "special"];
 const MAX_TEXT = 80;
 export const emptyItems = () => ({
@@ -80,6 +80,8 @@ export function encodeSetup(setup) {
         parts.push(`rb=${(STAT_NAMES[f.rankBy] ?? "").toLowerCase()}`);
     if (f.type)
         parts.push(`rt=${enc(f.type)}`);
+    if (f.ability)
+        parts.push(`ra=${enc(f.ability)}`);
     const hidden = FORM_KEYS.filter(key => (key === "max" ? f.hideMax : key === "mega" ? f.hideMega : f.hideSpecial));
     if (hidden.length)
         parts.push(`hf=${hidden.join(",")}`);
@@ -120,6 +122,7 @@ export function decodeSetup(query) {
     if (rank >= 0)
         filters.rankBy = rank;
     filters.type = text("rt") ?? "";
+    filters.ability = text("ra") ?? "";
     const hidden = (params.get("hf") ?? "").toLowerCase().split(",");
     filters.hideMax = hidden.includes("max");
     filters.hideMega = hidden.includes("mega");

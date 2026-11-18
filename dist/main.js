@@ -417,6 +417,7 @@ function currentSetup(primary, secondary) {
         filters: {
             rankBy: rankSel.value === "total" ? "total" : Number(rankSel.value),
             type: typeSel.value,
+            ability: wantedAbility() ?? "",
             hideMax: maxChk.checked,
             hideMega: megaChk.checked,
             hideSpecial: specialChk.checked,
@@ -480,6 +481,10 @@ function applySetup(setup) {
         if (filters.type && !wantedType)
             unused.push(`type "${filters.type}"`);
         typeSel.value = wantedType ?? "";
+        const abilityIndex = filters.ability ? abilityNames.findIndex(n => n.toLowerCase() === filters.ability.toLowerCase()) : 0;
+        if (filters.ability && abilityIndex < 1)
+            unused.push(`partner ability "${filters.ability}"`);
+        abilityFilterBox.setIndex(Math.max(0, abilityIndex));
         maxChk.checked = filters.hideMax;
         megaChk.checked = filters.hideMega;
         specialChk.checked = filters.hideSpecial;
