@@ -6,7 +6,7 @@ import type { Pokemon } from "../src/types.js";
 
 const mon = (name: string): Pokemon => ({
   name, stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "", abilities: { regular: [], hidden: null },
-  fusionName: name, canEvolve: false, isMax: false,
+  fusionName: name, canEvolve: false, isMax: false, isMega: false, isSpecial: false,
 });
 
 describe("activeAbilities", () => {

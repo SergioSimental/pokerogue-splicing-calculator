@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { fuse, statAtLevel } from "../src/fuse.js";
-import { isMegaForm, isSpecialForm, rankPartners, type PartnerOptions } from "../src/partners.js";
+import { rankPartners, type PartnerOptions } from "../src/partners.js";
 import type { Pokemon } from "../src/types.js";
 
-const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"], isMax = false): Pokemon => ({
-  name, types, stats, passive: "P", abilities: { regular: ["A"], hidden: null }, fusionName: name, canEvolve: false, isMax,
+type Flags = Partial<Pick<Pokemon, "isMax" | "isMega" | "isSpecial">>;
+const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"], flags: Flags = {}): Pokemon => ({
+  name, types, stats, passive: "P", abilities: { regular: ["A"], hidden: null }, fusionName: name, canEvolve: false,
+  isMax: false, isMega: false, isSpecial: false, ...flags,
 });
 
 const primary = mon("Prime", ["Fire"], [100, 100, 100, 100, 100, 100]);
 const tank = mon("Tank", ["Steel", "Rock"], [200, 50, 200, 50, 200, 20]);
 const sprinter = mon("Sprinter", ["Electric"], [40, 60, 40, 60, 40, 200]);
-const giant = mon("Giant", ["Dragon"], [250, 250, 250, 250, 250, 250], true);
+const giant = mon("Giant", ["Dragon"], [250, 250, 250, 250, 250, 250], { isMax: true });
 const dex = [primary, tank, sprinter, giant];
 
 const base: PartnerOptions = {
@@ -91,16 +93,9 @@ describe("rankPartners", () => {
   });
 });
 
-describe("isMegaForm and hiding Mega forms", () => {
-  const named = (name: string) => mon(name, ["Normal"], [50, 50, 50, 50, 50, 50]);
-
-  it("recognises every Mega naming style and nothing else", () => {
-    for (const name of ["Venusaur (Mega)", "Charizard (Mega X)", "Garchomp (Mega Z)", "Tatsugiri (Mega Curly)"]) expect(isMegaForm(named(name)), name).toBe(true);
-    for (const name of ["Meganium", "Yanmega", "Groudon (Primal)", "Venusaur (G-Max)", "Mega Man (Alolan)", "Mega"]) expect(isMegaForm(named(name)), name).toBe(false);
-  });
-
-  it("hides them from the ranking, independently of Max forms", () => {
-    const mega = mon("Zed (Mega)", ["Dragon"], [250, 250, 250, 250, 250, 250]);
+describe("hiding Mega forms", () => {
+  it("hides flagged entries, independently of Max forms", () => {
+    const mega = mon("Zed (Mega)", ["Dragon"], [250, 250, 250, 250, 250, 250], { isMega: true });
     const all = [primary, tank, giant, mega];
     const list = (o: Partial<PartnerOptions>) => rankPartners(primary, all, { ...base, ...o }).map(p => p.secondary.name);
     expect(list({})).toContain("Zed (Mega)");
@@ -109,24 +104,22 @@ describe("isMegaForm and hiding Mega forms", () => {
     expect(list({ hideMax: true })).toContain("Zed (Mega)");
     expect(list({ hideMax: true })).not.toContain("Giant");
   });
+
+  it("goes by the flag, not the name", () => {
+    const decoy = mon("Mega Decoy (Mega)", ["Dragon"], [250, 250, 250, 250, 250, 250]);
+    const real = mon("Zed", ["Dragon"], [250, 250, 250, 250, 250, 250], { isMega: true });
+    const list = rankPartners(primary, [primary, decoy, real], { ...base, hideMega: true }).map(p => p.secondary.name);
+    expect(list).toContain("Mega Decoy (Mega)");
+    expect(list).not.toContain("Zed");
+  });
 });
 
-describe("isSpecialForm and hiding special forms", () => {
-  const named = (name: string, isMax = false) => mon(name, ["Normal"], [50, 50, 50, 50, 50, 50], isMax);
-
-  it("covers bracketed forms except Mega and Max, and leaves species and regional forms alone", () => {
-    for (const name of ["Groudon (Primal)", "Necrozma (Ultra)", "Landorus (Therian Forme)", "Giratina (Origin Forme)", "Ogerpon (Terastal Form)", "Arceus (Type: Fire)", "Unown (!)", "Zygarde (Complete Forme (50% PC))"]) expect(isSpecialForm(named(name)), name).toBe(true);
-    for (const name of ["Garchomp", "Alolan Marowak", "Galarian Meowth", "Venusaur (Mega)", "Charizard (Mega X)"]) expect(isSpecialForm(named(name)), name).toBe(false);
-    expect(isSpecialForm(named("Mon (x) Extra"))).toBe(false);
-    expect(isSpecialForm(named("Venusaur (G-Max)", true))).toBe(false);
-    expect(isSpecialForm(named("Eternatus (E-Max)", true))).toBe(false);
-  });
-
-  it("hides them from the ranking, independently of the other two filters", () => {
+describe("hiding special forms", () => {
+  it("hides flagged entries, independently of the other two filters", () => {
     const strong = [250, 250, 250, 250, 250, 250] as const;
-    const primal = mon("Zed (Primal)", ["Fire"], [...strong]);
-    const mega = mon("Zed (Mega)", ["Fire"], [...strong]);
-    const max = mon("Zed (G-Max)", ["Fire"], [...strong], true);
+    const primal = mon("Zed (Primal)", ["Fire"], [...strong], { isSpecial: true });
+    const mega = mon("Zed (Mega)", ["Fire"], [...strong], { isMega: true });
+    const max = mon("Zed (G-Max)", ["Fire"], [...strong], { isMax: true });
     const regional = mon("Alolan Zed", ["Fire"], [...strong]);
     const all = [primary, primal, mega, max, regional];
     const list = (o: Partial<PartnerOptions>) => rankPartners(primary, all, { ...base, ...o }).map(p => p.secondary.name).sort();

@@ -56,7 +56,7 @@ const mon = (name: string, extra: Partial<Pokemon> = {}): Pokemon => ({
   abilities: { regular: ["Ability"], hidden: null },
   fusionName: name,
   canEvolve: false,
-  isMax: false,
+  isMax: false, isMega: false, isSpecial: false,
   ...extra,
 });
 const idsFor = (a: string, b: string) => speciesItemsFor(mon(a), mon(b)).map(i => i.id);

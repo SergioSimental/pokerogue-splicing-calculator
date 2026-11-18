@@ -4,7 +4,7 @@ import { adjustedBaseStats, clampIv, clampLevel, fuse, MACHO_BRACE_MAX, MAX_LEVE
 import type { Stats } from "../src/types.js";
 import type { Pokemon } from "../src/types.js";
 
-const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"] = [50, 50, 50, 50, 50, 50]): Pokemon => ({ name, types, stats, passive: "Test Ability", abilities: { regular: ["Test Ability"], hidden: null }, fusionName: "Test", canEvolve: false, isMax: false });
+const mon = (name: string, types: Pokemon["types"], stats: Pokemon["stats"] = [50, 50, 50, 50, 50, 50]): Pokemon => ({ name, types, stats, passive: "Test Ability", abilities: { regular: ["Test Ability"], hidden: null }, fusionName: "Test", canEvolve: false, isMax: false, isMega: false, isSpecial: false });
 
 describe("fuse: stats", () => {
   it("averages each stat", () => {

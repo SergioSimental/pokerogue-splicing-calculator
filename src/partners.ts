@@ -20,19 +20,6 @@ export interface PartnerOptions {
   limit: number;
 }
 
-/** Mega forms are named "X (Mega)", "X (Mega X)", "X (Mega Curly)" and so on; species like Meganium never have the bracket. */
-export function isMegaForm(pokemon: Pokemon): boolean {
-  return /\(Mega( [^)]+)?\)$/.test(pokemon.name);
-}
-
-/**
- * Any other alternate form, which the data names with a bracket (Primal, Ultra, Origin Forme, Therian Forme, Terastal ...).
- * Mega and Max forms have their own filters, and regional forms such as Alolan Marowak carry no bracket, so they stay.
- */
-export function isSpecialForm(pokemon: Pokemon): boolean {
-  return /\(.+\)$/.test(pokemon.name) && !pokemon.isMax && !isMegaForm(pokemon);
-}
-
 export interface Partner {
   secondary: Pokemon;
   types: PokemonType[];
@@ -48,8 +35,8 @@ export function rankPartners(primary: Pokemon, dex: Pokemon[], o: PartnerOptions
   const out: Partner[] = [];
   for (const secondary of dex) {
     if (o.hideMax && secondary.isMax) continue;
-    if (o.hideMega && isMegaForm(secondary)) continue;
-    if (o.hideSpecial && isSpecialForm(secondary)) continue;
+    if (o.hideMega && secondary.isMega) continue;
+    if (o.hideSpecial && secondary.isSpecial) continue;
     const abilities = abilityChoices(secondary);
     if (o.ability && !abilities.some(a => a.name === o.ability)) continue;
     const f = fuse(primary, secondary, o.baseItems);

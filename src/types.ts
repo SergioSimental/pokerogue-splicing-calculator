@@ -36,6 +36,10 @@ export interface Pokemon {
   canEvolve: boolean;
   /** True for Gigantamax and Eternamax forms, which Eviolite does nothing for. */
   isMax: boolean;
+  /** True for Mega forms (Mega, Mega X, Mega Curly...), found from the game's own form key. */
+  isMega: boolean;
+  /** True for every other alternate form (Primal, Origin, Therian, Unown letters...); never for a Max or Mega form, or a base species. */
+  isSpecial: boolean;
 }
 
 export interface Fusion {
