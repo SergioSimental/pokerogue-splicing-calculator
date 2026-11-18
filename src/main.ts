@@ -401,7 +401,10 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     p.abilities.forEach((a, k) => {
       if (k > 0) abilities.append(", ");
       const span = h("span", a.hidden ? "hiddenab" : undefined, a.name);
-      if (a.hidden) span.title = "Hidden ability";
+      if (a.hidden) {
+        span.title = "Hidden ability"; // for hovering; the hidden text below is what screen readers and touch screens get
+        span.append(h("span", "sr-only", " (hidden ability)"));
+      }
       if (a.name === wanted) span.classList.add("wantedab");
       abilities.append(span);
     });
@@ -418,7 +421,8 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     Array.from(tr.children).forEach(cell => cell.setAttribute("role", "cell"));
     table.append(tr);
   });
-  partnerBody.replaceChildren(passiveLine, top.length ? table : h("p", undefined, "No partners match these filters."));
+  // With no matches the message stands alone, so the passive line does not distract from it.
+  partnerBody.replaceChildren(...(top.length ? [passiveLine, table] : [h("p", undefined, "No partners match these filters.")]));
   // Picking a partner redraws the list, so keyboard focus goes back to the button that was used.
   if (refocusPartner !== undefined) {
     const name = refocusPartner;

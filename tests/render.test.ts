@@ -1064,10 +1064,13 @@ describe("best partner search", () => {
   const abilityText = (name: string) => rows().find(r => r.querySelector(".pname")?.textContent === name)?.querySelector(".pabilities");
 
   it("lists each partner's abilities, regular first and the hidden one marked", () => {
-    expect(abilityText("Brute")?.textContent).toBe("Huge Power, Pure Power, Wonder Guard");
+    expect(abilityText("Brute")?.textContent).toBe("Huge Power, Pure Power, Wonder Guard (hidden ability)");
     const hidden = abilityText("Brute")?.querySelector(".hiddenab");
-    expect(hidden?.textContent).toBe("Wonder Guard");
+    expect(hidden?.textContent).toBe("Wonder Guard (hidden ability)");
     expect(hidden?.getAttribute("title")).toBe("Hidden ability");
+    // The note is real text, not only a tooltip, so it reaches touch screens and screen readers.
+    expect(hidden?.querySelector(".sr-only")?.textContent).toBe(" (hidden ability)");
+    expect(abilityText("Brute")?.querySelectorAll(".sr-only").length).toBe(1);
     expect(abilityText("Echo")?.textContent).toBe("Huge Power");
     expect(abilityText("Echo")?.querySelector(".hiddenab")).toBeNull();
   });
@@ -1077,6 +1080,7 @@ describe("best partner search", () => {
     expect(rowNames()).toEqual(["Brute"]);
     expect(abilityText("Brute")?.querySelectorAll(".wantedab").length).toBe(1);
     expect(abilityText("Brute")?.querySelector(".wantedab")?.textContent).toBe("Pure Power");
+    expect(abilityText("Brute")?.querySelector(".wantedab")?.classList.contains("hiddenab")).toBe(false);
     // Hidden abilities count too.
     ability("Wonder Guard");
     expect(rowNames()).toEqual(["Brute"]);
@@ -1109,6 +1113,58 @@ describe("best partner search", () => {
     input.dispatchEvent(new Event("blur"));
   });
 
+  const abilityList = () => [...document.querySelectorAll<HTMLElement>("#rank-ability-list li[data-index]")].map(li => li.textContent);
+  const typeInto = (text: string) => {
+    const input = $("#rank-ability") as HTMLInputElement;
+    input.dispatchEvent(new Event("focus"));
+    input.value = text;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return input;
+  };
+  const press = (input: HTMLInputElement, key: string) => input.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+
+  it("chooses the right ability from a partial name, even though the list is shortened", () => {
+    const input = typeInto("wonder");
+    expect(abilityList()).toEqual(["Wonder Guard"]); // the choice's place in the shortened list is not its place in the full one
+    press(input, "Enter");
+    expect(input.value).toBe("Wonder Guard");
+    expect(rowNames()).toEqual(["Brute"]);
+    // Typing part of another name picks that one, not whatever sat at the same position before.
+    const second = typeInto("pure p");
+    expect(abilityList()).toEqual(["Pure Power"]);
+    press(second, "Enter");
+    expect(second.value).toBe("Pure Power");
+    expect(rowNames()).toEqual(["Brute"]);
+    expect(abilityText("Brute")?.querySelector(".wantedab")?.textContent).toBe("Pure Power");
+  });
+
+  it("matches without capitals and by any part of the name, and picks the best match with Enter", () => {
+    const input = typeInto("POWER");
+    expect(abilityList()).toEqual(["Huge Power", "Pure Power"]);
+    press(input, "Enter");
+    expect(input.value).toBe("Huge Power");
+    expect(rowNames().sort()).toEqual(["Brute", "Echo"]);
+  });
+
+  it("keeps the current ability when nothing matches or the box is cleared, and 'Any ability' removes it", () => {
+    ability("Pure Power");
+    const input = typeInto("zzzz");
+    expect($("#rank-ability-list .empty")?.textContent).toBe("No matches");
+    press(input, "Enter");
+    input.dispatchEvent(new Event("blur"));
+    expect(input.value).toBe("Pure Power");
+    expect(rowNames()).toEqual(["Brute"]);
+    // Clearing the text and leaving the box puts the chosen ability back, as with the Pokémon pickers.
+    typeInto("");
+    input.dispatchEvent(new Event("blur"));
+    expect(input.value).toBe("Pure Power");
+    expect(rowNames()).toEqual(["Brute"]);
+    // The way back to everyone is choosing 'Any ability'.
+    pick("#rank-ability", "any ability");
+    expect(input.value).toBe("Any ability");
+    expect(rows().length).toBe(10);
+  });
+
   it("shows the passive once, above the table, and only when it is unlocked", () => {
     const line = () => $("#partner-body p.hint")?.textContent;
     const box = $("#passive-unlocked") as HTMLInputElement;
@@ -1123,6 +1179,12 @@ describe("best partner search", () => {
     expect(document.querySelectorAll("#partner-body tr.prow .ppassive").length).toBe(0);
     set(false);
     expect(line()).toContain("tick");
+    // With no matching partners the message stands alone.
+    set(true);
+    choose("rank-type", "Dragon");
+    expect($("#partner-body")?.textContent).toBe("No partners match these filters.");
+    choose("rank-type", "");
+    set(false);
   });
 
   it("puts the form filters in a group of their own, apart from rank, type and ability", () => {
