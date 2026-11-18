@@ -2,6 +2,19 @@ import { clampIv, clampLevel } from "./fuse.js";
 import { clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS, type HeldItems } from "./heldItems.js";
 import { STAT_NAMES } from "./types.js";
 
+/** The Best partner panel's filters. */
+export interface PartnerFilters {
+  /** "total" or the index of the stat in STAT_NAMES order. */
+  rankBy: "total" | number;
+  /** A type name, or empty for any type. */
+  type: string;
+  hideMax: boolean;
+  hideMega: boolean;
+  hideSpecial: boolean;
+}
+
+export const defaultFilters = (): PartnerFilters => ({ rankBy: "total", type: "", hideMax: false, hideMega: false, hideSpecial: false });
+
 /** Everything a shared link carries. Names (not list positions) are stored, so a link survives the data being updated. */
 export interface Setup {
   primary: string;
@@ -14,13 +27,17 @@ export interface Setup {
   passive: boolean;
   primaryItems: HeldItems;
   secondaryItems: HeldItems;
+  filters: PartnerFilters;
 }
 
 /** What a link can say. Anything it leaves out is left alone. */
-export type SharedSetup = Partial<Omit<Setup, "primaryItems" | "secondaryItems">> & {
+export type SharedSetup = Partial<Omit<Setup, "primaryItems" | "secondaryItems" | "filters">> & {
   primaryItems?: HeldItems;
   secondaryItems?: HeldItems;
+  filters?: PartnerFilters;
 };
+
+const FORM_KEYS = ["max", "mega", "special"] as const;
 
 const MAX_TEXT = 80;
 
@@ -80,6 +97,11 @@ export function encodeSetup(setup: Setup): string {
   const secondary = encodeItems(setup.secondaryItems);
   if (primary) parts.push(`pi=${enc(primary).replace(/%2C/g, ",")}`);
   if (secondary) parts.push(`si=${enc(secondary).replace(/%2C/g, ",")}`);
+  const f = setup.filters;
+  if (f.rankBy !== "total") parts.push(`rb=${(STAT_NAMES[f.rankBy] ?? "").toLowerCase()}`);
+  if (f.type) parts.push(`rt=${enc(f.type)}`);
+  const hidden = FORM_KEYS.filter(key => (key === "max" ? f.hideMax : key === "mega" ? f.hideMega : f.hideSpecial));
+  if (hidden.length) parts.push(`hf=${hidden.join(",")}`);
   return parts.join("&");
 }
 
@@ -109,5 +131,16 @@ export function decodeSetup(query: string): SharedSetup {
   out.passive = params.get("pp") === "1";
   out.primaryItems = decodeItems(params.get("pi") ?? "");
   out.secondaryItems = decodeItems(params.get("si") ?? "");
+
+  // Filters a link does not mention are put back to their defaults, like the passive.
+  const filters = defaultFilters();
+  const rank = STAT_NAMES.findIndex(name => name.toLowerCase() === params.get("rb")?.toLowerCase());
+  if (rank >= 0) filters.rankBy = rank;
+  filters.type = text("rt") ?? "";
+  const hidden = (params.get("hf") ?? "").toLowerCase().split(",");
+  filters.hideMax = hidden.includes("max");
+  filters.hideMega = hidden.includes("mega");
+  filters.hideSpecial = hidden.includes("special");
+  out.filters = filters;
   return out;
 }
