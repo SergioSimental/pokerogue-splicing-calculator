@@ -137,10 +137,14 @@
         <div class="pfilters">
           <label>Rank by <select id="rank-by"><option value="total">Total</option><option value="0">HP</option><option value="1">Attack</option><option value="2">Defense</option><option value="3">Sp. Atk</option><option value="4">Sp. Def</option><option value="5">Speed</option></select></label>
           <label>Type <select id="rank-type"><option value="">Any</option></select></label>
-          <label class="chk"><input type="checkbox" id="rank-hidemax"> Hide Max forms</label>
-          <label class="chk"><input type="checkbox" id="rank-hidemega"> Hide Mega forms</label>
-          <label class="chk" title="Other alternate forms, such as Primal, Origin Forme or Therian Forme. Regional forms like Alolan stay."><input type="checkbox" id="rank-hidespecial"> Hide special forms</label>
+          <label class="abilityfilter">Ability <span class="combo"><input id="rank-ability" type="text" autocomplete="off" spellcheck="false" placeholder="Loading..." disabled><ul id="rank-ability-list"></ul></span></label>
         </div>
+        <fieldset class="pforms">
+          <legend>Hide forms</legend>
+          <label class="chk"><input type="checkbox" id="rank-hidemax"> Max</label>
+          <label class="chk"><input type="checkbox" id="rank-hidemega"> Mega</label>
+          <label class="chk" title="Other alternate forms, such as Primal, Origin Forme or Therian Forme. Regional forms like Alolan stay."><input type="checkbox" id="rank-hidespecial"> Special</label>
+        </fieldset>
         <div id="partner-body"></div>
       </section>
     </div>

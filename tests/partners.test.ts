@@ -137,3 +137,47 @@ describe("isSpecialForm and hiding special forms", () => {
     expect(list({ hideMax: true, hideMega: true, hideSpecial: true })).toEqual(["Alolan Zed", "Prime"]);
   });
 });
+
+describe("filtering by ability", () => {
+  const withAbilities = (name: string, regular: string[], hidden: string | null, stats = 50) =>
+    ({ ...mon(name, ["Normal"], [stats, stats, stats, stats, stats, stats]), abilities: { regular, hidden } });
+  const prime = mon("Prime", ["Fire"], [100, 100, 100, 100, 100, 100]);
+  const pool = [
+    withAbilities("Brute", ["Huge Power", "Pure Power"], "Wonder Guard", 60),
+    withAbilities("Echo", ["Huge Power"], null, 90),
+    withAbilities("Sly", ["Blaze"], "Huge Power", 70),
+    withAbilities("Plain", ["Blaze"], "Blaze", 80),
+  ];
+  const list = (o: Partial<PartnerOptions> = {}) => rankPartners(prime, pool, { ...base, ...o }).map(p => p.secondary.name);
+
+  it("keeps only the partners that can have the ability, regular or hidden", () => {
+    expect(list({ ability: "Huge Power" })).toEqual(["Echo", "Sly", "Brute"]);
+    expect(list({ ability: "Wonder Guard" })).toEqual(["Brute"]);
+    expect(list({ ability: "Pure Power" })).toEqual(["Brute"]);
+    expect(list({ ability: "Nonexistent" })).toEqual([]);
+  });
+
+  it("keeps everyone when no ability is asked for, including an empty one", () => {
+    expect(list()).toHaveLength(4);
+    expect(list({ ability: "" })).toHaveLength(4);
+  });
+
+  it("ranks the matching partners as usual and works with the other filters", () => {
+    expect(list({ ability: "Huge Power", rankBy: 0 })).toEqual(["Echo", "Sly", "Brute"]);
+    expect(list({ ability: "Huge Power", type: "Fire" })).toEqual(["Echo", "Sly", "Brute"]);
+    expect(list({ ability: "Huge Power", type: "Water" })).toEqual([]);
+    expect(list({ ability: "Huge Power", limit: 1 })).toEqual(["Echo"]);
+  });
+
+  it("lists each partner's abilities with the hidden one last, and leaves out a repeated hidden ability", () => {
+    const abilities = (name: string) => rankPartners(prime, pool, base).find(p => p.secondary.name === name)?.abilities.map(a => a.label);
+    expect(abilities("Brute")).toEqual(["Huge Power", "Pure Power", "Wonder Guard (Hidden)"]);
+    expect(abilities("Plain")).toEqual(["Blaze"]);
+    expect(abilities("Sly")).toEqual(["Blaze", "Huge Power (Hidden)"]);
+  });
+
+  it("does not match a name that only contains the ability's name", () => {
+    const extra = [...pool, withAbilities("Near", ["Huge Power Plus"], null, 99)];
+    expect(rankPartners(prime, extra, { ...base, ability: "Huge Power" }).map(p => p.secondary.name)).not.toContain("Near");
+  });
+});

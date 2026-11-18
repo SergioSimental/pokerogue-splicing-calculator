@@ -947,6 +947,7 @@ describe("best partner search", () => {
     pick("#primary", "safe");
     choose("rank-by", "total");
     choose("rank-type", "");
+    pick("#rank-ability", "Any ability");
     hideMax(false);
     hideMega(false);
     hideSpecial(false);
@@ -972,7 +973,8 @@ describe("best partner search", () => {
     // Safe Mon is Water, so every fusion with it is Water
     expect(rows().length).toBeGreaterThan(0);
     choose("rank-type", "Dragon");
-    expect($("#partner-body")?.textContent).toBe("No partners match these filters.");
+    expect($("#partner-body")?.textContent).toContain("No partners match these filters.");
+    expect($("#partner-body table")).toBeNull();
   });
 
   it("hides Mega forms only when asked to", () => {
@@ -997,7 +999,7 @@ describe("best partner search", () => {
   it("shows the same stats as the calculator for the same pair", () => {
     pick("#secondary", "colossus");
     const row = rows().find(r => r.querySelector(".pname")?.textContent === "Colossus");
-    const cells = [...(row?.querySelectorAll("td") ?? [])].slice(3).map(c => Number((c.textContent ?? "").replace(/,/g, "")));
+    const cells = [...(row?.querySelectorAll("td") ?? [])].slice(4).map(c => Number((c.textContent ?? "").replace(/,/g, "")));
     expect(cells.slice(0, 6)).toEqual(shown());
     expect(cells[6]).toBe(shown().reduce((a, b) => a + b, 0));
   });
@@ -1048,10 +1050,100 @@ describe("best partner search", () => {
     choose("rank-by", "5");
     expect($("#partner-body caption")?.textContent).toBe("Best partners for Safe Mon, ranked by Spe. Choose a name to use it as the secondary.");
     const headers = [...document.querySelectorAll("#partner-body th")];
-    expect(headers.length).toBe(10);
+    expect(headers.length).toBe(11);
     expect(headers.every(th => th.getAttribute("scope") === "col")).toBe(true);
     choose("rank-by", "total");
     expect($("#partner-body caption")?.textContent).toContain("ranked by total");
+  });
+
+  const ability = (name: string) => {
+    const box = $("#rank-ability") as HTMLInputElement;
+    pick("#rank-ability", name);
+    return box.value;
+  };
+  const abilityText = (name: string) => rows().find(r => r.querySelector(".pname")?.textContent === name)?.querySelector(".pabilities");
+
+  it("lists each partner's abilities, regular first and the hidden one marked", () => {
+    expect(abilityText("Brute")?.textContent).toBe("Huge Power, Pure Power, Wonder Guard");
+    const hidden = abilityText("Brute")?.querySelector(".hiddenab");
+    expect(hidden?.textContent).toBe("Wonder Guard");
+    expect(hidden?.getAttribute("title")).toBe("Hidden ability");
+    expect(abilityText("Echo")?.textContent).toBe("Huge Power");
+    expect(abilityText("Echo")?.querySelector(".hiddenab")).toBeNull();
+  });
+
+  it("filters to the partners that can have an ability, and says which one it matched", () => {
+    expect(ability("Pure Power")).toBe("Pure Power");
+    expect(rowNames()).toEqual(["Brute"]);
+    expect(abilityText("Brute")?.querySelectorAll(".wantedab").length).toBe(1);
+    expect(abilityText("Brute")?.querySelector(".wantedab")?.textContent).toBe("Pure Power");
+    // Hidden abilities count too.
+    ability("Wonder Guard");
+    expect(rowNames()).toEqual(["Brute"]);
+    ability("Huge Power");
+    expect(rowNames().sort()).toEqual(["Brute", "Echo"]);
+  });
+
+  it("goes back to every partner for 'Any ability' and combines with the other filters", () => {
+    ability("Huge Power");
+    hideMax(true);
+    choose("rank-type", "Water");
+    // Safe Mon is Water, so every fusion is Water; the ability filter still narrows it
+    expect(rowNames().sort()).toEqual(["Brute", "Echo"]);
+    choose("rank-type", "Dragon");
+    expect($("#partner-body")?.textContent).toContain("No partners match these filters.");
+    choose("rank-type", "");
+    ability("Any ability");
+    expect(rows().length).toBe(10);
+    expect(rowNames()).not.toEqual(["Brute", "Echo"]);
+  });
+
+  it("offers every ability in the data once, sorted, after 'Any ability'", () => {
+    const input = $("#rank-ability") as HTMLInputElement;
+    input.dispatchEvent(new Event("focus"));
+    const labels = [...document.querySelectorAll("#rank-ability-list li[data-index]")].map(li => li.textContent ?? "");
+    expect(labels[0]).toBe("Any ability");
+    const rest = labels.slice(1);
+    expect(rest).toEqual([...new Set(rest)].sort((a, b) => a.localeCompare(b)));
+    for (const name of ["Huge Power", "Wonder Guard", "Hidden B", "Ability B"]) expect(rest).toContain(name);
+    input.dispatchEvent(new Event("blur"));
+  });
+
+  it("shows the passive once, above the table, and only when it is unlocked", () => {
+    const line = () => $("#partner-body p.hint")?.textContent;
+    const box = $("#passive-unlocked") as HTMLInputElement;
+    const set = (on: boolean) => {
+      box.checked = on;
+      box.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    set(false);
+    expect(line()).toContain("tick");
+    set(true);
+    expect(line()).toBe("Passive (from Safe Mon, so the same for every partner): Passive B");
+    expect(document.querySelectorAll("#partner-body tr.prow .ppassive").length).toBe(0);
+    set(false);
+    expect(line()).toContain("tick");
+  });
+
+  it("puts the form filters in a group of their own, apart from rank, type and ability", () => {
+    const forms = $("#partners fieldset.pforms") as HTMLElement;
+    expect(forms.querySelector("legend")?.textContent).toBe("Hide forms");
+    expect([...forms.querySelectorAll("input")].map(i => i.id)).toEqual(["rank-hidemax", "rank-hidemega", "rank-hidespecial"]);
+    const others = $("#partners .pfilters") as HTMLElement;
+    expect(others.contains(forms)).toBe(false);
+    expect([...others.querySelectorAll("select, input")].map(i => i.id)).toEqual(["rank-by", "rank-type", "rank-ability"]);
+  });
+
+  it("labels each stat cell for the narrow-screen cards and keeps the table roles", () => {
+    const row = rows()[0] as HTMLElement;
+    const stats = [...row.querySelectorAll("td[data-label]")];
+    expect(stats.map(c => c.getAttribute("data-label"))).toEqual(["HP", "Atk", "Def", "SpA", "SpD", "Spe", "Total"]);
+    expect($("#partner-body table")?.getAttribute("role")).toBe("table");
+    expect(row.getAttribute("role")).toBe("row");
+    expect([...row.children].every(c => c.getAttribute("role") === "cell")).toBe(true);
+    const head = $("#partner-body tr:not(.prow)") as HTMLElement;
+    expect(head.getAttribute("role")).toBe("row");
+    expect([...head.children].every(c => c.getAttribute("role") === "columnheader")).toBe(true);
   });
 
   it("uses a clicked row as the secondary Pokémon", () => {
