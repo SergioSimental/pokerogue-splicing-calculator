@@ -300,6 +300,11 @@ const maxChk = el("rank-hidemax");
 const megaChk = el("rank-hidemega");
 const specialChk = el("rank-hidespecial");
 const partnerBody = el("partner-body");
+const abilityFilterBox = new Combobox(el("rank-ability"), el("rank-ability-list"), render);
+const ANY_ABILITY = "Any ability";
+/** Every ability in the data, after "Any ability", in the order the filter's list shows them. */
+let abilityNames = [ANY_ABILITY];
+const wantedAbility = () => (abilityFilterBox.index > 0 ? abilityNames[abilityFilterBox.index] : undefined);
 for (const t of Object.keys(COLORS))
     typeSel.append(new Option(t, t));
 for (const c of [rankSel, typeSel, maxChk, megaChk, specialChk])
@@ -311,22 +316,30 @@ function renderPartners(primary, level, ivs, held, nature) {
     const top = rankPartners(primary, dex, {
         level, ivs, rankBy: by, hideMax: maxChk.checked, hideMega: megaChk.checked, hideSpecial: specialChk.checked, limit: 10,
         type: (typeSel.value || undefined),
+        ability: wantedAbility(),
         natureMultiplier: i => natureMultiplier(NATURES[nature], i),
         baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },
         heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
     });
+    const wanted = wantedAbility();
+    const passiveLine = h("p", "hint", passiveToggle.checked
+        ? `Passive (from ${primary.name}, so the same for every partner): ${primary.passive}`
+        : "Passive: tick “Passive ability unlocked” above to include the primary's passive.");
     const table = h("table", "partners");
+    table.setAttribute("role", "table"); // keeps the table meaning when the narrow-screen layout stops drawing it as a table
     const rankedBy = by === "total" ? "total" : STAT_NAMES[by] ?? "total";
     table.append(h("caption", "sr-only", `Best partners for ${primary.name}, ranked by ${rankedBy}. Choose a name to use it as the secondary.`));
     const head = h("tr");
-    head.append(h("th", undefined, "#"), h("th", undefined, "Partner"), h("th", undefined, "Types"));
+    head.append(h("th", undefined, "#"), h("th", undefined, "Partner"), h("th", undefined, "Types"), h("th", undefined, "Abilities"));
     STAT_NAMES.forEach((n, i) => head.append(h("th", by === i ? "hot" : undefined, n)));
     head.append(h("th", by === "total" ? "hot" : undefined, "Total"));
-    Array.from(head.children).forEach(th => th.setAttribute("scope", "col"));
+    head.setAttribute("role", "row");
+    Array.from(head.children).forEach(th => { th.setAttribute("scope", "col"); th.setAttribute("role", "columnheader"); });
     table.append(head);
     const current = dex[secondaryBox.index];
     top.forEach((p, n) => {
         const tr = h("tr", "prow");
+        tr.setAttribute("role", "row");
         // The name is a real button, so keyboards and screen readers can use it. Clicking anywhere else in the row works too.
         const choose = h("button", "pickbtn", p.secondary.name);
         choose.type = "button";
@@ -347,12 +360,34 @@ function renderPartners(primary, level, ivs, held, nature) {
             c.style.background = COLORS[t];
             types.append(c);
         }
-        tr.append(h("td", undefined, String(n + 1)), name, types);
-        p.stats.forEach((v, i) => tr.append(h("td", by === i ? "hot" : undefined, fmt(v))));
-        tr.append(h("td", by === "total" ? "hot" : undefined, fmt(p.total)));
+        const abilities = h("td", "pabilities");
+        p.abilities.forEach((a, k) => {
+            if (k > 0)
+                abilities.append(", ");
+            const span = h("span", a.hidden ? "hiddenab" : undefined, a.name);
+            if (a.hidden) {
+                span.title = "Hidden ability"; // for hovering; the hidden text below is what screen readers and touch screens get
+                span.append(h("span", "sr-only", " (hidden ability)"));
+            }
+            if (a.name === wanted)
+                span.classList.add("wantedab");
+            abilities.append(span);
+        });
+        tr.append(h("td", undefined, String(n + 1)), name, types, abilities);
+        // The labels are only drawn on narrow screens, where each partner becomes a small card.
+        p.stats.forEach((v, i) => {
+            const cell = h("td", by === i ? "hot" : undefined, fmt(v));
+            cell.dataset.label = STAT_NAMES[i] ?? "";
+            tr.append(cell);
+        });
+        const totalCell = h("td", by === "total" ? "hot" : undefined, fmt(p.total));
+        totalCell.dataset.label = "Total";
+        tr.append(totalCell);
+        Array.from(tr.children).forEach(cell => cell.setAttribute("role", "cell"));
         table.append(tr);
     });
-    partnerBody.replaceChildren(top.length ? table : h("p", undefined, "No partners match these filters."));
+    // With no matches the message stands alone, so the passive line does not distract from it.
+    partnerBody.replaceChildren(...(top.length ? [passiveLine, table] : [h("p", undefined, "No partners match these filters.")]));
     // Picking a partner redraws the list, so keyboard focus goes back to the button that was used.
     if (refocusPartner !== undefined) {
         const name = refocusPartner;
@@ -501,6 +536,14 @@ async function init() {
     }
     dex.sort((a, b) => a.name.localeCompare(b.name));
     const dexChoices = dex.map(p => ({ label: p.name, text: normalize(`${p.name} ${p.types.join(" ")}`) }));
+    const names = new Set();
+    for (const p of dex) {
+        p.abilities.regular.forEach(a => names.add(a));
+        if (p.abilities.hidden)
+            names.add(p.abilities.hidden);
+    }
+    abilityNames = [ANY_ABILITY, ...[...names].sort((a, b) => a.localeCompare(b))];
+    abilityFilterBox.setChoices(abilityNames.map(label => ({ label, text: normalize(label) })), 0);
     primaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Charizard")));
     secondaryBox.setChoices(dexChoices, Math.max(0, dex.findIndex(p => p.name === "Garchomp")));
     for (const input of ivInputs) {

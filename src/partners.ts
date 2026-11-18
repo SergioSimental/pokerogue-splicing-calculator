@@ -1,4 +1,5 @@
 import { fuse, statAtLevel, type BaseStatItems, type HeldStatItems } from "./fuse.js";
+import { abilityChoices, type AbilityChoice } from "./abilities.js";
 import type { Pokemon, PokemonType } from "./types.js";
 
 export interface PartnerOptions {
@@ -12,6 +13,8 @@ export interface PartnerOptions {
   hideMax?: boolean;
   hideMega?: boolean;
   hideSpecial?: boolean;
+  /** Keep only partners that can give this ability (a fused Pokémon takes its ability from the secondary). */
+  ability?: string;
   baseItems?: BaseStatItems;
   heldFor: (statIndex: number) => HeldStatItems;
   limit: number;
@@ -33,6 +36,8 @@ export function isSpecialForm(pokemon: Pokemon): boolean {
 export interface Partner {
   secondary: Pokemon;
   types: PokemonType[];
+  /** The abilities this partner can give the fusion: its regular ones, then its hidden one. */
+  abilities: AbilityChoice[];
   stats: number[];
   total: number;
   score: number;
@@ -45,11 +50,13 @@ export function rankPartners(primary: Pokemon, dex: Pokemon[], o: PartnerOptions
     if (o.hideMax && secondary.isMax) continue;
     if (o.hideMega && isMegaForm(secondary)) continue;
     if (o.hideSpecial && isSpecialForm(secondary)) continue;
+    const abilities = abilityChoices(secondary);
+    if (o.ability && !abilities.some(a => a.name === o.ability)) continue;
     const f = fuse(primary, secondary, o.baseItems);
     if (o.type && !f.types.includes(o.type)) continue;
     const stats = f.stats.map((v, i) => statAtLevel(i, v, o.level, o.ivs[i] ?? 0, o.natureMultiplier(i), o.heldFor(i)));
     const total = stats.reduce((a, b) => a + b, 0);
-    out.push({ secondary, types: f.types, stats, total, score: o.rankBy === "total" ? total : (stats[o.rankBy] ?? 0) });
+    out.push({ secondary, types: f.types, abilities, stats, total, score: o.rankBy === "total" ? total : (stats[o.rankBy] ?? 0) });
   }
   return out.sort((a, b) => b.score - a.score || b.total - a.total || a.secondary.name.localeCompare(b.secondary.name)).slice(0, o.limit);
 }

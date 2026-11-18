@@ -101,11 +101,11 @@ button{cursor:pointer;font-size:1.2rem}
 }
 
 #partners .hint{opacity:.8;font-size:var(--fs-sm);margin:.2rem 0 .6rem}
-.pfilters{display:flex;flex-wrap:wrap;gap:.6rem 1rem;margin-bottom:.6rem;font-size:var(--fs-sm)}
-.pfilters select{font:inherit}
+.pfilters{display:flex;flex-wrap:wrap;align-items:end;gap:.6rem 1rem;margin-bottom:.6rem;font-size:var(--fs-sm)}
+.pfilters select,.pfilters .combo input{font:inherit;box-sizing:border-box;height:2.6rem}
 table.partners{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
 table.partners th,table.partners td{padding:.3rem .35rem;text-align:right;border-bottom:1px solid rgba(128,128,128,.25)}
-table.partners th:nth-child(-n+3),table.partners td:nth-child(-n+3){text-align:left}
+table.partners th:nth-child(-n+4),table.partners td:nth-child(-n+4){text-align:left}
 table.partners tr.prow{cursor:pointer}
 table.partners tr.prow:hover,table.partners tr.prow:focus-within{background:rgba(128,128,128,.15)}
 .pickbtn{font:inherit;font-weight:600;color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
@@ -128,3 +128,25 @@ html{scroll-behavior:smooth}
 .sharebar{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .8rem;margin-bottom:.6rem}
 .sharebar button{font:inherit;font-size:var(--fs-sm);border:2px solid currentColor;border-radius:99px;padding:.15rem .9rem;background:none;color:inherit;cursor:pointer}
 #share-note{font-size:var(--fs-sm);opacity:.85;overflow-wrap:anywhere}
+
+.abilityfilter .combo{display:block;width:13rem}
+.pforms{border:0;padding:0;margin:0 0 .6rem;font-size:var(--fs-sm)}
+.pforms legend{float:left;padding:0;margin:0 1rem 0 0;font-weight:600}
+.pforms .chk{display:inline-flex;margin-right:1rem}
+.pabilities{max-width:11rem}
+.hiddenab{font-style:italic}
+.wantedab{font-weight:700;text-decoration:underline}
+/* On a narrow screen each partner becomes a small card, so nothing scrolls sideways. */
+@media(max-width:700px){
+  table.partners,table.partners tr{display:block}
+  table.partners tr:not(.prow){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  table.partners tr.prow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.2rem .3rem;padding:.55rem .3rem;border-bottom:1px solid rgba(128,128,128,.25)}
+  table.partners td{display:block;padding:0;border:0;text-align:left}
+  table.partners td:nth-child(1){grid-column:1;grid-row:1;opacity:.7}
+  table.partners td:nth-child(2){grid-column:2/8;grid-row:1}
+  table.partners td:nth-child(3){grid-column:2/8;grid-row:2}
+  table.partners td:nth-child(4){grid-column:2/8;grid-row:3;max-width:none;opacity:.9}
+  table.partners td[data-label]{grid-row:4;text-align:center;padding:.15rem 0;margin-top:.2rem}
+  table.partners td[data-label]::before{content:attr(data-label);display:block;font-size:.72rem;font-weight:400;opacity:.7}
+  .abilityfilter .combo{width:min(100%,16rem)}
+}
