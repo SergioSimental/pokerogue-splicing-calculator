@@ -41,6 +41,17 @@ export function isMaxForm(rawFormKey) {
   return MAX_FORM_KEYS.includes(resolveFormKey(rawFormKey) ?? "");
 }
 
+/**
+ * True for every Mega form: mega, mega-x, mega-y, mega-z and the others that start with "mega".
+ * A new SpeciesFormKey.MEGA_* member this file does not know yet still counts, so a new kind of Mega form
+ * is not quietly missed. Anything else, including nothing at all (the base form), is false.
+ */
+export function isMegaForm(rawFormKey) {
+  const key = resolveFormKey(rawFormKey);
+  if (key !== null) return key === "mega" || key.startsWith("mega-");
+  return /^SpeciesFormKey\.MEGA(_\w+)?$/.test(rawFormKey.trim());
+}
+
 /** Which template in en/pokemon-form-battle.json the game uses for this form key, or null for none. */
 export function formTemplateKey(formKey) {
   switch (formKey) {

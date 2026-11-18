@@ -12,20 +12,20 @@ const HOSTILE_PASSIVE = `Passive <b>A</b> & <img src=x>`;
 const HOSTILE_ABILITY = `Ability <i>A</i> & <img src=x>`;
 
 const dex = [
-  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null }, fusionName: HOSTILE, canEvolve: true, isMax: false },
-  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" }, fusionName: "Safe Mon", canEvolve: false, isMax: false },
-  { name: "Pikachu (Cosplay)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Pikachu (Cosplay)", canEvolve: true, isMax: false },
-  { name: "Raichu", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Raichu", canEvolve: false, isMax: false },
-  { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto", canEvolve: false, isMax: false },
-  { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false },
-  { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false },
-  { name: "Mega Mon (Mega X)", stats: [190, 190, 190, 190, 190, 190], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Mega Mon", canEvolve: false, isMax: false },
-  { name: "Odd Mon (Primal)", stats: [200, 200, 200, 200, 200, 200], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Odd Mon", canEvolve: false, isMax: false },
-  { name: "Gmax Mon", stats: [180, 180, 180, 180, 180, 180], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true },
-  { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false },
-  { name: "Brute", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Hustle", abilities: { regular: ["Huge Power", "Pure Power"], hidden: "Wonder Guard" }, fusionName: "Brute", canEvolve: false, isMax: false },
-  { name: "Echo", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Huge Power", abilities: { regular: ["Huge Power"], hidden: null }, fusionName: "Echo", canEvolve: false, isMax: false },
-  { name: "Guardian", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Wonder Guard", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Guardian", canEvolve: false, isMax: false },
+  { name: HOSTILE, stats: [100, 90, 80, 70, 60, 50], types: ["Fire", "Flying"], passive: HOSTILE_PASSIVE, abilities: { regular: [HOSTILE_ABILITY], hidden: null }, fusionName: HOSTILE, canEvolve: true, isMax: false, isMega: false, isSpecial: false },
+  { name: "Safe Mon", stats: [50, 50, 50, 50, 50, 50], types: ["Water"], passive: "Passive B", abilities: { regular: ["Ability B", "Ability C"], hidden: "Hidden B" }, fusionName: "Safe Mon", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Pikachu (Cosplay)", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Pikachu (Cosplay)", canEvolve: true, isMax: false, isMega: false, isSpecial: false },
+  { name: "Raichu", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Raichu", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Ditto", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Ditto", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Alolan Marowak", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Alolan Marowak", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Clamperl", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Clamperl", canEvolve: true, isMax: false, isMega: false, isSpecial: false },
+  { name: "Mega Mon (Mega X)", stats: [190, 190, 190, 190, 190, 190], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Mega Mon", canEvolve: false, isMax: false, isMega: true, isSpecial: false },
+  { name: "Odd Mon (Primal)", stats: [200, 200, 200, 200, 200, 200], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Odd Mon", canEvolve: false, isMax: false, isMega: false, isSpecial: true },
+  { name: "Gmax Mon", stats: [180, 180, 180, 180, 180, 180], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "G-Max Mon", canEvolve: true, isMax: true, isMega: false, isSpecial: false },
+  { name: "Colossus", stats: [250, 250, 250, 250, 250, 250], types: ["Normal"], passive: "Passive", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Colossus", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Brute", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Hustle", abilities: { regular: ["Huge Power", "Pure Power"], hidden: "Wonder Guard" }, fusionName: "Brute", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Echo", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Huge Power", abilities: { regular: ["Huge Power"], hidden: null }, fusionName: "Echo", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
+  { name: "Guardian", stats: [50, 50, 50, 50, 50, 50], types: ["Normal"], passive: "Wonder Guard", abilities: { regular: ["Ability"], hidden: null }, fusionName: "Guardian", canEvolve: false, isMax: false, isMega: false, isSpecial: false },
 ];
 
 const $ = (selector: string) => document.querySelector(selector);

@@ -21,7 +21,7 @@ import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { readAbilities } from "./abilities-parser.mjs";
 import { hasEvolutions } from "./evolutions.mjs";
-import { formName, isMaxForm } from "./form-names.mjs";
+import { formName, isMaxForm, isMegaForm } from "./form-names.mjs";
 
 // Some networks reset Node's IPv6 connections to GitHub (ECONNRESET) while IPv4 works fine.
 // Same effect as running node with --dns-result-order=ipv4first --no-network-family-autoselection.
@@ -60,6 +60,9 @@ const SPECIAL_NAMES = {
   ETERNAL_FLOETTE: "Floette (Eternal Flower)", BATTLE_BOND_GRENINJA: "Greninja (Battle Bond)",
   GALAR_MR_MIME: "Galarian Mr. Mime", GALAR_FARFETCHD: "Galarian Farfetch'd",
 };
+// Two special forms that PokeRogue defines as separate species instead of alternate forms of one species.
+// They are still special forms for the "hide special forms" filter, so they are flagged here.
+const SPECIAL_FORM_SPECIES = new Set(["ETERNAL_FLOETTE", "BATTLE_BOND_GRENINJA"]);
 const REGION_PREFIXES = { ALOLA_: "Alolan ", GALAR_: "Galarian ", HISUI_: "Hisuian ", PALDEA_: "Paldean " };
 
 const capitalize = w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
@@ -238,7 +241,7 @@ function buildDataset(generations, abilityNames, speciesNames, formTemplates) {
       const base = { ...readEntry(head, id), passive: nameOf(passiveFor(0)), abilities: readAbilities(head, id, nameOf) };
       // Eviolite needs to know whether the species can still evolve. Alternate forms share the species' answer.
       const canEvolve = hasEvolutions(segment, id);
-      out.push({ name: baseName, fusionName: speciesName, ...base, canEvolve, isMax: false });
+      out.push({ name: baseName, fusionName: speciesName, ...base, canEvolve, isMax: false, isMega: false, isSpecial: SPECIAL_FORM_SPECIES.has(id) });
 
       // Keep an alternate form only when its types, stats or passive differ from every earlier
       // entry of the species. Forms that are identical in all three would just add duplicates.
@@ -256,7 +259,10 @@ function buildDataset(generations, abilityNames, speciesNames, formTemplates) {
         if (seen.has(keyOf(form))) return;
         seen.add(keyOf(form));
         const fusionName = formName(speciesName, field(block, "formKey"), formTemplates, formId);
-        out.push({ name: `${baseName} (${formLabel})`, fusionName, ...form, canEvolve, isMax: isMaxForm(field(block, "formKey")) });
+        const isMax = isMaxForm(field(block, "formKey"));
+        const isMega = isMegaForm(field(block, "formKey"));
+        // Every other alternate form (Primal, Origin, Therian, Unown letters...) is "special". Regional species are separate species, not forms.
+        out.push({ name: `${baseName} (${formLabel})`, fusionName, ...form, canEvolve, isMax, isMega, isSpecial: !isMax && !isMega });
       });
     }
   }
@@ -283,7 +289,10 @@ function validate(data) {
       throw new Error(`${e.name}: needs one or two regular abilities`);
     }
     if (hidden !== null && (typeof hidden !== "string" || hidden === "")) throw new Error(`${e.name}: invalid hidden ability`);
-    if (typeof e.canEvolve !== "boolean" || typeof e.isMax !== "boolean") throw new Error(`${e.name}: canEvolve and isMax must be true or false`);
+    if (["canEvolve", "isMax", "isMega", "isSpecial"].some(key => typeof e[key] !== "boolean")) {
+      throw new Error(`${e.name}: canEvolve, isMax, isMega and isSpecial must be true or false`);
+    }
+    if ([e.isMax, e.isMega, e.isSpecial].filter(Boolean).length > 1) throw new Error(`${e.name}: a form is at most one of Max, Mega and special`);
   }
   const share = test => data.filter(test).length / data.length;
   if (share(e => e.abilities.hidden !== null) < MIN_HIDDEN_SHARE) {
@@ -294,6 +303,9 @@ function validate(data) {
   }
   if (!data.some(e => e.isMax)) {
     throw new Error("No Gigantamax or Eternamax forms found. The formKey format upstream probably changed.");
+  }
+  if (!data.some(e => e.isMega)) {
+    throw new Error("No Mega forms found. The formKey format upstream probably changed.");
   }
   if (share(e => e.abilities.regular.length === 2) < MIN_TWO_REGULAR_SHARE) {
     throw new Error("Hardly any entries have two regular abilities. The ability2 format upstream probably changed.");

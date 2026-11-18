@@ -1,25 +1,14 @@
 import { fuse, statAtLevel } from "./fuse.js";
 import { abilityChoices } from "./abilities.js";
-/** Mega forms are named "X (Mega)", "X (Mega X)", "X (Mega Curly)" and so on; species like Meganium never have the bracket. */
-export function isMegaForm(pokemon) {
-    return /\(Mega( [^)]+)?\)$/.test(pokemon.name);
-}
-/**
- * Any other alternate form, which the data names with a bracket (Primal, Ultra, Origin Forme, Therian Forme, Terastal ...).
- * Mega and Max forms have their own filters, and regional forms such as Alolan Marowak carry no bracket, so they stay.
- */
-export function isSpecialForm(pokemon) {
-    return /\(.+\)$/.test(pokemon.name) && !pokemon.isMax && !isMegaForm(pokemon);
-}
 /** Fuse the primary with every Pokémon in the dex and return the best partners first. */
 export function rankPartners(primary, dex, o) {
     const out = [];
     for (const secondary of dex) {
         if (o.hideMax && secondary.isMax)
             continue;
-        if (o.hideMega && isMegaForm(secondary))
+        if (o.hideMega && secondary.isMega)
             continue;
-        if (o.hideSpecial && isSpecialForm(secondary))
+        if (o.hideSpecial && secondary.isSpecial)
             continue;
         const abilities = abilityChoices(secondary);
         if (o.ability && !abilities.some(a => a.name === o.ability))

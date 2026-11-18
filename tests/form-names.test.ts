@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { formName, formTemplateKey, isMaxForm, resolveFormKey } from "../scripts/form-names.mjs";
+import { formName, formTemplateKey, isMaxForm, isMegaForm, resolveFormKey } from "../scripts/form-names.mjs";
 
 // The templates PokeRogue's English locale (pokemon-form-battle.json) uses, trimmed to what matters.
 const TEMPLATES = {
@@ -95,5 +95,29 @@ describe("isMaxForm", () => {
   it("is false for a key it does not recognise", () => {
     expect(isMaxForm("SpeciesFormKey.SOMETHING_NEW")).toBe(false);
     expect(isMaxForm("someVariable")).toBe(false);
+  });
+});
+
+describe("isMegaForm", () => {
+  it("is true for every Mega kind, as an enum member or a string", () => {
+    for (const key of ["MEGA", "MEGA_X", "MEGA_Y", "MEGA_Z", "MEGA_ORIGINAL", "MEGA_CURLY", "MEGA_DROOPY", "MEGA_STRETCHY"]) {
+      expect(isMegaForm(`SpeciesFormKey.${key}`), key).toBe(true);
+    }
+    expect(isMegaForm('"mega-x"')).toBe(true);
+    expect(isMegaForm('"mega"')).toBe(true);
+  });
+
+  it("treats a Mega key it has not seen before as Mega, so a new one is not missed", () => {
+    expect(isMegaForm("SpeciesFormKey.MEGA_NEW")).toBe(true);
+  });
+
+  it("is false for the base form and for every other kind of form", () => {
+    expect(isMegaForm(null)).toBe(false);
+    expect(isMegaForm(undefined)).toBe(false);
+    expect(isMegaForm("SpeciesFormKey.PRIMAL")).toBe(false);
+    expect(isMegaForm("SpeciesFormKey.GIGANTAMAX")).toBe(false);
+    expect(isMegaForm('"therian"')).toBe(false);
+    expect(isMegaForm("SpeciesFormKey.SOMETHING_NEW")).toBe(false);
+    expect(isMegaForm("someVariable")).toBe(false);
   });
 });

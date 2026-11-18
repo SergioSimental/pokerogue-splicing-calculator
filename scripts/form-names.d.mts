@@ -1,5 +1,6 @@
 export function resolveFormKey(raw: string | null | undefined): string | null;
 export function isMaxForm(rawFormKey: string | null | undefined): boolean;
+export function isMegaForm(rawFormKey: string | null | undefined): boolean;
 export function formTemplateKey(formKey: string): string | null;
 export function formName(
   speciesName: string,

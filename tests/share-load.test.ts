@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 // Opening a shared link starts the page with that build. This is a separate file because the page loads its link
 // once, when the script starts, and every other test file starts from the defaults.
 const mon = (name: string, stats: number[], abilities: { regular: string[]; hidden: string | null }) => ({
-  name, stats, types: ["Normal"], passive: "Passive", abilities, fusionName: name, canEvolve: false, isMax: false,
+  name, stats, types: ["Normal"], passive: "Passive", abilities, fusionName: name, canEvolve: false, isMax: false, isMega: false, isSpecial: false,
 });
 const dex = [
   mon("Charizard", [50, 50, 50, 50, 50, 50], { regular: ["Blaze"], hidden: "Solar Power" }),
