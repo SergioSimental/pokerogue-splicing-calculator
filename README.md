@@ -106,6 +106,8 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Count stat-changing abilities in the Best partner ranking: it ranks stored stats today, so a Huge Power partner's Attack is not doubled in the order (it would need to pick each partner's best ability for the ranked stat)
+- Update the page address after a short pause instead of on every change: it is rewritten on each keystroke, and Safari limits how often `history.replaceState` may be called (about 100 times in 30 seconds), after which the address bar stops following until the next change. The page keeps working, so this only matters for fast typing
+- Measure the Best partner ranking again if abilities are counted in it: a full ranking takes about 0.8 ms on the 1,363 entries today (a phone is perhaps 5 to 10 times slower), but counting each partner's abilities multiplies that work. Debouncing, caching and a top-10 heap were looked at and not worth it at this size; the thing to watch is the data growing by an order of magnitude
 - Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
 
 ## License
