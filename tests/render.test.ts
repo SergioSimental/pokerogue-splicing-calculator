@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fusedSpeciesName } from "../src/fusionName.js";
 
 // A name full of characters that would break or inject markup if it were ever treated as HTML.
@@ -1242,29 +1242,44 @@ describe("shareable links", () => {
     return select.options[select.selectedIndex]?.textContent;
   };
 
+  // The address is rewritten a moment after the last change, so these tests control the clock.
+  const settle = () => vi.advanceTimersByTime(250);
+
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     resetCalculator();
     pick("#primary", "safe");
     pick("#secondary", "colossus");
     load("");
     window.dispatchEvent(new PopStateEvent("popstate"));
+    settle();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("keeps the address bar in step with every setting", () => {
     setNumber("level", "77");
+    settle();
     expect(query().get("l")).toBe("77");
     pick("#nature", "jolly");
+    settle();
     expect(query().get("n")).toBe("Jolly");
     setNumber("iv3", "12");
+    settle();
     expect(query().get("iv")).toBe("31,31,31,12,31,31");
     tick("passive-unlocked");
+    settle();
     expect(query().get("pp")).toBe("1");
     setNumber("soul-dew", "4");
     setNumber("vitamin5", "9");
     tick("old-gateau");
+    settle();
     expect(query().get("pi")).toBe("sd4,v5-9,gateau");
     setNumber("secondary-macho-brace", "20");
     tick("secondary-eviolite");
+    settle();
     expect(query().get("si")).toBe("mb20,eviolite");
     expect(query().get("p")).toBe("Safe Mon");
     expect(query().get("s")).toBe("Colossus");
@@ -1279,9 +1294,11 @@ describe("shareable links", () => {
 
   it("follows the picks, the swap and the best partner list", () => {
     ($("#swap") as HTMLButtonElement).click();
+    settle();
     expect([query().get("p"), query().get("s")]).toEqual(["Colossus", "Safe Mon"]);
     ($("#swap") as HTMLButtonElement).click();
     [...document.querySelectorAll<HTMLElement>("#partner-body tr.prow")].find(r => r.querySelector(".pname")?.textContent === "Echo")?.click();
+    settle();
     expect(query().get("s")).toBe("Echo");
   });
 
@@ -1321,6 +1338,7 @@ describe("shareable links", () => {
     setNumber("vitamin1", "5");
     tick("item-metal-powder");
     setNumber("secondary-macho-brace", "50");
+    settle();
     const typedIn = { stats: shown(), total: totalLine(), arrows: arrows(), link: location.search };
     resetCalculator();
     pick("#primary", "safe");
@@ -1456,16 +1474,93 @@ describe("shareable links", () => {
     expect(button.textContent).toBe("Copy link");
   });
 
+  it("writes the address once after a burst of changes, not on every one", () => {
+    const spy = vi.spyOn(history, "replaceState");
+    for (const level of ["51", "52", "53", "54", "55"]) setNumber("level", level);
+    expect(spy.mock.calls.filter(call => String(call[2]).includes("?p=")).length).toBe(0);
+    settle();
+    const written = spy.mock.calls.map(call => String(call[2])).filter(url => url.includes("?p="));
+    spy.mockRestore();
+    expect(written.length).toBe(1);
+    expect(written[0]).toContain("l=55");
+  });
+
+  it("waits for a short pause before writing", () => {
+    setNumber("level", "66");
+    vi.advanceTimersByTime(150);
+    expect(query().get("l")).not.toBe("66");
+    vi.advanceTimersByTime(100);
+    expect(query().get("l")).toBe("66");
+  });
+
+  it("starts the wait again when another change comes in", () => {
+    setNumber("level", "66");
+    vi.advanceTimersByTime(150);
+    setNumber("level", "67");
+    vi.advanceTimersByTime(150);
+    expect(query().get("l")).not.toBe("67");
+    vi.advanceTimersByTime(100);
+    expect(query().get("l")).toBe("67");
+  });
+
+  it("copies the latest build even before the address bar has caught up", async () => {
+    vi.useRealTimers(); // the clipboard call is a promise, so this test lets the clock run
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    setNumber("level", "93");
+    ($("#copy-link") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalled());
+    expect(String(writeText.mock.calls[0]?.[0])).toContain("l=93");
+    expect(location.search).toContain("l=93");
+  });
+
+  it("copies the latest build even when the browser refuses to update the address", async () => {
+    const spy = vi.spyOn(history, "replaceState").mockImplementation(() => { throw new Error("too many calls"); });
+    const writeText = vi.fn(async (_text: string) => undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    setNumber("level", "94");
+    ($("#copy-link") as HTMLButtonElement).click();
+    await vi.advanceTimersByTimeAsync(0);
+    spy.mockRestore();
+    expect(String(writeText.mock.calls[0]?.[0])).toContain("l=94");
+  });
+
+  it("does not let a waiting change overwrite a link that was just opened", () => {
+    setNumber("level", "80");
+    load("p=Ditto&s=Brute&l=40");
+    settle();
+    expect(query().get("l")).toBe("40");
+    expect(query().get("p")).toBe("Ditto");
+  });
+
+  it("writes a waiting change when the page is hidden", () => {
+    setNumber("level", "81");
+    window.dispatchEvent(new Event("pagehide"));
+    expect(query().get("l")).toBe("81");
+  });
+
+  it("keeps a change made just before a jump link is used", () => {
+    setNumber("level", "58");
+    location.hash = "#partners"; // fires the same event as going back, but only the fragment changed
+    expect(value("level")).toBe("58");
+    settle();
+    expect(query().get("l")).toBe("58");
+    history.replaceState(null, "", location.pathname);
+  });
+
   it("does not disturb the jump links", () => {
     expect(($(".jump") as HTMLAnchorElement).getAttribute("href")).toBe("#partners");
     setNumber("level", "60");
     location.hash = "#partners";
+    settle();
     expect(location.search).toContain("l=60");
     setNumber("level", "61");
+    settle();
     expect(location.search).toContain("l=61");
     expect(location.hash).toBe("#partners");
     pick("#secondary", "echo");
     ($("#swap") as HTMLButtonElement).click();
+    settle();
     expect(location.hash).toBe("#partners");
     history.replaceState(null, "", location.pathname);
   });
