@@ -6,7 +6,7 @@ import { battleMultiplier, battleStat, clampCount, fusedItemLines, HELD_ITEM_LIM
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
 import { rankPartners } from "./partners.js";
-import { decodeSetup, emptyItems, encodeSetup } from "./share.js";
+import { decodeSetup, defaultFilters, emptyItems, encodeSetup } from "./share.js";
 import { STAT_NAMES } from "./types.js";
 const COLORS = {
     Normal: "#8a8a72", Fire: "#e2622a", Water: "#4a7fd6", Electric: "#c9a010",
@@ -414,6 +414,14 @@ function currentSetup(primary, secondary) {
         passive: passiveToggle.checked,
         primaryItems: readHeld(primaryItems, i => ivs[i] ?? 0),
         secondaryItems: readHeld(secondaryItems, i => ivs[i] ?? 0),
+        filters: {
+            rankBy: rankSel.value === "total" ? "total" : Number(rankSel.value),
+            type: typeSel.value,
+            ability: wantedAbility() ?? "",
+            hideMax: maxChk.checked,
+            hideMega: megaChk.checked,
+            hideSpecial: specialChk.checked,
+        },
     };
 }
 /** Keeps the address bar in step with the page, so its address can be copied at any time. */
@@ -467,6 +475,19 @@ function applySetup(setup) {
         setHeld(primaryItems, setup.primaryItems ?? emptyItems());
         setHeld(secondaryItems, setup.secondaryItems ?? emptyItems());
         clampVitamins();
+        const filters = setup.filters ?? defaultFilters();
+        rankSel.value = String(filters.rankBy);
+        const wantedType = Object.keys(COLORS).find(t => t.toLowerCase() === filters.type.toLowerCase());
+        if (filters.type && !wantedType)
+            unused.push(`type "${filters.type}"`);
+        typeSel.value = wantedType ?? "";
+        const abilityIndex = filters.ability ? abilityNames.findIndex(n => n.toLowerCase() === filters.ability.toLowerCase()) : 0;
+        if (filters.ability && abilityIndex < 1)
+            unused.push(`partner ability "${filters.ability}"`);
+        abilityFilterBox.setIndex(Math.max(0, abilityIndex));
+        maxChk.checked = filters.hideMax;
+        megaChk.checked = filters.hideMega;
+        specialChk.checked = filters.hideSpecial;
         // A first pass builds this secondary's ability list and shows the species items its Pokémon can use.
         render();
         abilitySelect.value = "0"; // a link without an ability means the first one, even when the secondary did not change

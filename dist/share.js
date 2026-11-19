@@ -1,6 +1,8 @@
 import { clampIv, clampLevel } from "./fuse.js";
 import { clampCount, HELD_ITEM_LIMITS, SPECIES_ITEMS } from "./heldItems.js";
 import { STAT_NAMES } from "./types.js";
+export const defaultFilters = () => ({ rankBy: "total", type: "", ability: "", hideMax: false, hideMega: false, hideSpecial: false });
+const FORM_KEYS = ["max", "mega", "special"];
 const MAX_TEXT = 80;
 export const emptyItems = () => ({
     soulDew: 0, machoBrace: 0, vitamins: STAT_NAMES.map(() => 0),
@@ -73,6 +75,16 @@ export function encodeSetup(setup) {
         parts.push(`pi=${enc(primary).replace(/%2C/g, ",")}`);
     if (secondary)
         parts.push(`si=${enc(secondary).replace(/%2C/g, ",")}`);
+    const f = setup.filters;
+    if (f.rankBy !== "total")
+        parts.push(`rb=${(STAT_NAMES[f.rankBy] ?? "").toLowerCase()}`);
+    if (f.type)
+        parts.push(`rt=${enc(f.type)}`);
+    if (f.ability)
+        parts.push(`ra=${enc(f.ability)}`);
+    const hidden = FORM_KEYS.filter(key => (key === "max" ? f.hideMax : key === "mega" ? f.hideMega : f.hideSpecial));
+    if (hidden.length)
+        parts.push(`hf=${hidden.join(",")}`);
     return parts.join("&");
 }
 /** Reads a query string. Anything invalid is dropped, so a damaged or hand-edited link never breaks the page. */
@@ -104,5 +116,17 @@ export function decodeSetup(query) {
     out.passive = params.get("pp") === "1";
     out.primaryItems = decodeItems(params.get("pi") ?? "");
     out.secondaryItems = decodeItems(params.get("si") ?? "");
+    // Filters a link does not mention are put back to their defaults, like the passive.
+    const filters = defaultFilters();
+    const rank = STAT_NAMES.findIndex(name => name.toLowerCase() === params.get("rb")?.toLowerCase());
+    if (rank >= 0)
+        filters.rankBy = rank;
+    filters.type = text("rt") ?? "";
+    filters.ability = text("ra") ?? "";
+    const hidden = (params.get("hf") ?? "").toLowerCase().split(",");
+    filters.hideMax = hidden.includes("max");
+    filters.hideMega = hidden.includes("mega");
+    filters.hideSpecial = hidden.includes("special");
+    out.filters = filters;
     return out;
 }
