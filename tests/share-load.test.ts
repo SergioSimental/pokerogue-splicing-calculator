@@ -77,9 +77,12 @@ describe("partner filters and the link", () => {
   };
 
   it("writes a changed filter into the link and keeps the rest of the build", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     change("rank-by", el => { el.value = "1"; });
     change("rank-hidemax", el => { el.checked = true; });
     change("rank-type", el => { el.value = ""; });
+    vi.advanceTimersByTime(250); // the address is rewritten a moment after the last change
+    vi.useRealTimers();
     expect(location.search).toContain("&rb=atk");
     expect(location.search).toContain("&hf=max,mega,special");
     expect(location.search).not.toContain("rt=");

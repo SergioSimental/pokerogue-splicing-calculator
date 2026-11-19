@@ -463,15 +463,52 @@ function currentSetup(primary: Pokemon, secondary: Pokemon): Setup {
   };
 }
 
-/** Keeps the address bar in step with the page, so its address can be copied at any time. */
+/**
+ * How long the page must be quiet before the address bar is rewritten. Browsers limit how often the address can be
+ * changed (Safari allows about 100 calls in 30 seconds), so a burst of typing is written once, not on every key.
+ */
+const LINK_DELAY_MS = 200;
+let linkTimer: ReturnType<typeof setTimeout> | undefined;
+/** The pair shown by the latest redraw. */
+let linkParts: [Pokemon, Pokemon] | undefined;
+/** The query the page last wrote to the address bar (or found there), to tell a jump link from real navigation. */
+let writtenSearch = location.search;
+let seenHash = location.hash;
+
+/** The address for the build on screen. */
+function buildLink(parts: [Pokemon, Pokemon]): string {
+  // The fragment stays, so a jump link (#partners) is not lost when a setting changes.
+  return `${location.pathname}?${encodeSetup(currentSetup(...parts))}${location.hash}`;
+}
+
+/** Writes the address bar now if a change is waiting to be written. */
+function flushLink(): void {
+  if (linkTimer === undefined) return;
+  clearTimeout(linkTimer);
+  linkTimer = undefined;
+  if (!linkParts) return;
+  try {
+    history.replaceState(null, "", buildLink(linkParts));
+    writtenSearch = location.search;
+  } catch {
+    // Some browsers refuse this (a file:// page, or too many calls in a short time). The page still works without it.
+  }
+}
+
+/** Keeps the address bar in step with the page, a moment after the last change. */
 function writeLink(primary: Pokemon, secondary: Pokemon): void {
   if (applying) return;
-  try {
-    // The fragment stays, so a jump link (#partners) is not lost when a setting changes.
-    history.replaceState(null, "", `${location.pathname}?${encodeSetup(currentSetup(primary, secondary))}${location.hash}`);
-  } catch {
-    // Some browsers refuse this (a file:// page, for example). The page still works without it.
-  }
+  linkParts = [primary, secondary];
+  clearTimeout(linkTimer);
+  linkTimer = setTimeout(flushLink, LINK_DELAY_MS);
+}
+
+/** The link to copy. It is built from the page, not read from the address bar, which may be a moment behind. */
+function shareableLink(): string {
+  flushLink();
+  const current = location.href.split("#")[0] ?? location.href;
+  if (!linkParts) return current;
+  return `${current.split("?")[0]}?${encodeSetup(currentSetup(...linkParts))}`;
 }
 
 function setHeld(group: HeldGroup, items: HeldItems): void {
@@ -549,15 +586,20 @@ function showNote(text: string): void {
 
 /** Loads the build in the address bar, if it has one. */
 function loadLink(): void {
+  const jumped = location.hash !== seenHash && location.search === writtenSearch;
+  seenHash = location.hash;
   if (location.search.length <= 1) return;
+  // A jump link (#partners) fires this too. Only the fragment changed, so a change still waiting to be written stays.
+  if (jumped && linkTimer !== undefined) return;
   const unused = applySetup(decodeSetup(location.search));
+  flushLink(); // the loaded build is written back straight away
   showNote(unused.length ? `Part of this link could not be used and was left at its default: ${unused.join(", ")}.` : "");
 }
 
 let copyTimer: ReturnType<typeof setTimeout> | undefined;
 copyButton.addEventListener("click", async () => {
   // A shared link opens at the top of the page, so the jump fragment is left off.
-  const link = location.href.split("#")[0] ?? location.href;
+  const link = shareableLink();
   let label = "Copied!";
   try {
     await navigator.clipboard.writeText(link);
@@ -572,6 +614,8 @@ copyButton.addEventListener("click", async () => {
   copyTimer = setTimeout(() => { copyButton.textContent = "Copy link"; }, 2000);
 });
 window.addEventListener("popstate", loadLink);
+// A change made in the last moment before leaving still reaches the address.
+window.addEventListener("pagehide", flushLink);
 
 async function init(): Promise<void> {
   try {
