@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fuse, statAtLevel } from "../src/fuse.js";
-import { rankPartners, type PartnerOptions } from "../src/partners.js";
+import { countedNote, rankPartners, type PartnerOptions } from "../src/partners.js";
 import type { Pokemon } from "../src/types.js";
 
 type Flags = Partial<Pick<Pokemon, "isMax" | "isMega" | "isSpecial">>;
@@ -172,5 +172,99 @@ describe("filtering by ability", () => {
   it("does not match a name that only contains the ability's name", () => {
     const extra = [...pool, withAbilities("Near", ["Huge Power Plus"], null, 99)];
     expect(rankPartners(prime, extra, { ...base, ability: "Huge Power" }).map(p => p.secondary.name)).not.toContain("Near");
+  });
+});
+
+describe("counting the chosen ability", () => {
+  const prime = mon("Prime", ["Fire"], [100, 100, 100, 100, 100, 100]);
+  const withAbilities = (name: string, regular: string[], hidden: string | null = null) =>
+    ({ ...mon(name, ["Normal"], [60, 70, 80, 90, 100, 110]), abilities: { regular, hidden } });
+  const powers = withAbilities("Powers", ["Huge Power", "Pure Power"], "Wonder Guard");
+  const hustler = withAbilities("Hustler", ["Hustle"]);
+  const plain = withAbilities("Plain", ["Intimidate"]);
+  const pool = [powers, hustler, plain];
+  const row = (name: string, o: Partial<PartnerOptions> = {}) => rankPartners(prime, pool, { ...base, ...o }).find(p => p.secondary.name === name);
+  const stored = (name: string) => row(name)?.stats ?? [];
+  const total = (stats: number[]) => stats.reduce((a, b) => a + b, 0);
+
+  it("ranks the stored stats when no ability is chosen, whatever the passive is", () => {
+    const withPassive = row("Powers", { passive: "Hustle", passiveUnlocked: true });
+    expect(withPassive?.stats).toEqual(stored("Powers"));
+    expect(withPassive?.total).toBe(total(stored("Powers")));
+  });
+
+  it("doubles Attack for Huge Power and Pure Power, and keeps the total in step", () => {
+    for (const ability of ["Huge Power", "Pure Power"]) {
+      const r = row("Powers", { ability });
+      const expected = stored("Powers").map((v, i) => (i === 1 ? Math.floor(v * 2) : v));
+      expect(r?.stats, ability).toEqual(expected);
+      expect(r?.total, ability).toBe(total(expected));
+    }
+  });
+
+  it("multiplies Attack by 1.5 for Hustle, rounded down", () => {
+    const r = row("Hustler", { ability: "Hustle" });
+    expect(r?.stats[1]).toBe(Math.floor((stored("Hustler")[1] ?? 0) * 1.5));
+    expect(r?.stats.filter((_, i) => i !== 1)).toEqual(stored("Hustler").filter((_, i) => i !== 1));
+  });
+
+  it("makes max HP 1 for Wonder Guard and leaves the other stats alone", () => {
+    const r = row("Powers", { ability: "Wonder Guard" });
+    expect(r?.stats[0]).toBe(1);
+    expect(r?.stats.slice(1)).toEqual(stored("Powers").slice(1));
+    expect(r?.total).toBe(1 + total(stored("Powers").slice(1)));
+  });
+
+  it("leaves the stats alone for an ability that changes none", () => {
+    expect(row("Plain", { ability: "Intimidate" })?.stats).toEqual(stored("Plain"));
+  });
+
+  it("multiplies in an unlocked passive too, as the result card does", () => {
+    const atk = stored("Powers")[1] ?? 0;
+    expect(row("Powers", { ability: "Huge Power", passive: "Hustle", passiveUnlocked: true })?.stats[1]).toBe(Math.floor(atk * 3));
+    expect(row("Powers", { ability: "Huge Power", passive: "Hustle", passiveUnlocked: false })?.stats[1]).toBe(Math.floor(atk * 2));
+    expect(row("Plain", { ability: "Intimidate", passive: "Hustle", passiveUnlocked: true })?.stats[1]).toBe(Math.floor((stored("Plain")[1] ?? 0) * 1.5));
+  });
+
+  it("counts the same ability only once when the passive is the same", () => {
+    const atk = stored("Powers")[1] ?? 0;
+    expect(row("Powers", { ability: "Huge Power", passive: "Huge Power", passiveUnlocked: true })?.stats[1]).toBe(Math.floor(atk * 2));
+  });
+
+  it("combines Wonder Guard from the passive with another ability", () => {
+    const r = row("Powers", { ability: "Huge Power", passive: "Wonder Guard", passiveUnlocked: true });
+    expect(r?.stats[0]).toBe(1);
+    expect(r?.stats[1]).toBe(Math.floor((stored("Powers")[1] ?? 0) * 2));
+  });
+
+  it("sorts by the counted stats", () => {
+    // Wonder Guard drops every partner's HP to 1, so ranking by HP falls back to the total.
+    const order = rankPartners(prime, [powers, withAbilities("Other", ["Wonder Guard"])], { ...base, ability: "Wonder Guard", rankBy: 0 });
+    expect(order.every(p => p.stats[0] === 1)).toBe(true);
+    expect(order.map(p => p.total)).toEqual([...order.map(p => p.total)].sort((a, b) => b - a));
+  });
+});
+
+describe("the note about what was counted", () => {
+  it("is empty without an ability, or when nothing that changes a stat is counted", () => {
+    expect(countedNote(undefined, "Hustle", true)).toBeUndefined();
+    expect(countedNote("Intimidate", "Intimidate", true)).toBeUndefined();
+    expect(countedNote("Intimidate", "Hustle", false)).toBeUndefined();
+  });
+
+  it("names the ability and what it does", () => {
+    expect(countedNote("Huge Power", "Intimidate", true)).toBe("Counting Huge Power (Atk ×2 in battle).");
+    expect(countedNote("Wonder Guard", undefined, false)).toBe("Counting Wonder Guard (max HP is 1).");
+  });
+
+  it("names the passive when it counts, and the combined multiplier", () => {
+    expect(countedNote("Huge Power", "Hustle", true)).toBe(
+      "Counting Huge Power (Atk ×2 in battle) and the primary's passive, Hustle (Atk ×1.5 in battle). Together: Atk ×3 in battle.");
+    expect(countedNote("Intimidate", "Hustle", true)).toBe("Counting the primary's passive, Hustle (Atk ×1.5 in battle).");
+  });
+
+  it("counts a repeated ability once, and leaves out a locked passive", () => {
+    expect(countedNote("Huge Power", "Huge Power", true)).toBe("Counting Huge Power (Atk ×2 in battle).");
+    expect(countedNote("Huge Power", "Hustle", false)).toBe("Counting Huge Power (Atk ×2 in battle).");
   });
 });

@@ -8,7 +8,7 @@ import {
 } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
-import { rankPartners } from "./partners.js";
+import { countedNote, rankPartners } from "./partners.js";
 import { decodeSetup, defaultFilters, emptyItems, encodeSetup, type Setup, type SharedSetup } from "./share.js";
 import { STAT_NAMES, type Pokemon, type PokemonType } from "./types.js";
 
@@ -359,6 +359,8 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     level, ivs, rankBy: by, hideMax: maxChk.checked, hideMega: megaChk.checked, hideSpecial: specialChk.checked, limit: 10,
     type: (typeSel.value || undefined) as PokemonType | undefined,
     ability: wantedAbility(),
+    passive: primary.passive,
+    passiveUnlocked: passiveToggle.checked,
     natureMultiplier: i => natureMultiplier(NATURES[nature], i),
     baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },
     heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
@@ -422,7 +424,9 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     table.append(tr);
   });
   // With no matches the message stands alone, so the passive line does not distract from it.
-  partnerBody.replaceChildren(...(top.length ? [passiveLine, table] : [h("p", undefined, "No partners match these filters.")]));
+  const counted = countedNote(wanted, primary.passive, passiveToggle.checked);
+  const countedLine = counted ? [h("p", "hint partnote", counted)] : [];
+  partnerBody.replaceChildren(...(top.length ? [passiveLine, ...countedLine, table] : [h("p", undefined, "No partners match these filters.")]));
   // Picking a partner redraws the list, so keyboard focus goes back to the button that was used.
   if (refocusPartner !== undefined) {
     const name = refocusPartner;

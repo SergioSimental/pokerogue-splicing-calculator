@@ -101,6 +101,7 @@ button{cursor:pointer;font-size:1.2rem}
 }
 
 #partners .hint{opacity:.8;font-size:var(--fs-sm);margin:.2rem 0 .6rem}
+#partners .partnote{opacity:1;font-weight:600}
 .pfilters{display:flex;flex-wrap:wrap;align-items:end;gap:.6rem 1rem;margin-bottom:.6rem;font-size:var(--fs-sm)}
 .pfilters select,.pfilters .combo input{font:inherit;box-sizing:border-box;height:2.6rem}
 table.partners{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
