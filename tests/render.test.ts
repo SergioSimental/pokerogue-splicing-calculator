@@ -1200,7 +1200,11 @@ describe("best partner search", () => {
       setPassive(false);
       pick("#rank-ability", "Any ability");
       pick("#primary", "safe");
+      pick("#secondary", "colossus");
     });
+    const clickRow = (name: string) => rows().find(r => r.querySelector(".pname")?.textContent === name)?.click();
+    const abilityOnCard = () => ($("#ability") as HTMLSelectElement).value;
+    const cardAbility = () => $("#result .ability")?.textContent;
 
     it("shows stored stats and no note until an ability is chosen", () => {
       pick("#primary", "echo");
@@ -1242,6 +1246,45 @@ describe("best partner search", () => {
       expect(rowNames()).toEqual(["Brute"]);
       expect(cell("Brute", "HP")).toBe(1);
       expect(note()).toBe("Counting Wonder Guard (max HP is 1).");
+    });
+
+    it("selects the asked-for ability when a partner is chosen from the list", () => {
+      pick("#secondary", "colossus");
+      pick("#rank-ability", "Pure Power"); // Brute's second regular ability
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("1");
+      expect(cardAbility()).toContain("Ability: Pure Power");
+      pick("#secondary", "colossus");
+      pick("#rank-ability", "Wonder Guard"); // Brute's hidden ability
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("2");
+      expect(cardAbility()).toContain("Ability: Wonder Guard (Hidden)");
+    });
+
+    it("also sets it when the partner chosen is already the secondary", () => {
+      pick("#secondary", "brute");
+      expect(abilityOnCard()).toBe("0");
+      pick("#rank-ability", "Pure Power");
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("1");
+      expect(cardAbility()).toContain("Ability: Pure Power");
+    });
+
+    it("starts from the first ability when no ability is asked for", () => {
+      pick("#secondary", "brute");
+      pick("#rank-ability", "Any ability");
+      ($("#ability") as HTMLSelectElement).value = "2";
+      ($("#ability") as HTMLSelectElement).dispatchEvent(new Event("change", { bubbles: true }));
+      clickRow("Colossus");
+      expect(abilityOnCard()).toBe("0");
+      expect(cardAbility()).toBe("Ability: Ability");
+    });
+
+    it("leaves the ability alone when the asked-for one is not on the chosen partner", () => {
+      pick("#rank-ability", "Huge Power");
+      clickRow("Echo");
+      expect(abilityOnCard()).toBe("0");
+      expect(cardAbility()).toContain("Ability: Huge Power");
     });
 
     it("has no note for an ability that changes no stat", () => {

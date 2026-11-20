@@ -173,19 +173,28 @@ function marker(className: string, title: string, position: string): HTMLSpanEle
 let abilityListFor = -1;
 let abilityList: AbilityChoice[] = [];
 
+/** Set when a partner is chosen from the Best partner list while an ability is asked for: the Ability box then shows that one. */
+let abilityOnPick: string | undefined;
+
 function syncAbilityOptions(secondary: Pokemon): void {
-  if (abilityListFor === secondaryBox.index) return;
-  abilityListFor = secondaryBox.index;
-  abilityList = abilityChoices(secondary);
-  abilitySelect.replaceChildren(
-    ...abilityList.map((choice, i) => {
-      const option = h("option", undefined, choice.label);
-      option.value = String(i);
-      return option;
-    }),
-  );
-  abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
-  abilitySelect.disabled = abilityList.length === 0;
+  if (abilityListFor !== secondaryBox.index) {
+    abilityListFor = secondaryBox.index;
+    abilityList = abilityChoices(secondary);
+    abilitySelect.replaceChildren(
+      ...abilityList.map((choice, i) => {
+        const option = h("option", undefined, choice.label);
+        option.value = String(i);
+        return option;
+      }),
+    );
+    abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
+    abilitySelect.disabled = abilityList.length === 0;
+  }
+  if (abilityOnPick !== undefined) {
+    const index = abilityList.findIndex(choice => choice.name === abilityOnPick);
+    if (index >= 0) abilitySelect.selectedIndex = index;
+    abilityOnPick = undefined;
+  }
 }
 
 /** Shows the species items this Pokémon can use itself and clears the rest. */
@@ -392,6 +401,7 @@ function renderPartners(primary: Pokemon, level: number, ivs: number[], held: Re
     if (p.secondary === current) choose.setAttribute("aria-current", "true");
     tr.onclick = () => {
       refocusPartner = p.secondary.name;
+      abilityOnPick = wantedAbility(); // the list counted this ability for the partner, so the card should too
       secondaryBox.setIndex(dex.indexOf(p.secondary));
       render();
     };
