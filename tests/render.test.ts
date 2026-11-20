@@ -1187,6 +1187,113 @@ describe("best partner search", () => {
     set(false);
   });
 
+  describe("counting the chosen ability", () => {
+    const passiveBox = () => $("#passive-unlocked") as HTMLInputElement;
+    const setPassive = (on: boolean) => {
+      passiveBox().checked = on;
+      passiveBox().dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    const cell = (name: string, label: string) =>
+      Number((rows().find(r => r.querySelector(".pname")?.textContent === name)?.querySelector(`td[data-label="${label}"]`)?.textContent ?? "").replace(/,/g, ""));
+    const note = () => $("#partner-body .partnote")?.textContent;
+    afterEach(() => {
+      setPassive(false);
+      pick("#rank-ability", "Any ability");
+      pick("#primary", "safe");
+      pick("#secondary", "colossus");
+    });
+    const clickRow = (name: string) => rows().find(r => r.querySelector(".pname")?.textContent === name)?.click();
+    const abilityOnCard = () => ($("#ability") as HTMLSelectElement).value;
+    const cardAbility = () => $("#result .ability")?.textContent;
+
+    it("shows stored stats and no note until an ability is chosen", () => {
+      pick("#primary", "echo");
+      setPassive(true);
+      expect(note()).toBeUndefined();
+      const before = cell("Colossus", "Atk");
+      expect(before).toBeGreaterThan(0);
+      pick("#rank-ability", "Huge Power");
+      expect(note()).toBeDefined();
+      pick("#rank-ability", "Any ability");
+      expect(cell("Colossus", "Atk")).toBe(before);
+      expect(note()).toBeUndefined();
+    });
+
+    it("doubles Attack for the chosen ability and says so", () => {
+      pick("#primary", "safe");
+      const stored = (() => { pick("#rank-ability", "Any ability"); return cell("Brute", "Atk"); })();
+      pick("#rank-ability", "Huge Power");
+      expect(cell("Brute", "Atk")).toBe(Math.floor(stored * 2));
+      expect(note()).toBe("Counting Huge Power (Atk ×2 in battle).");
+    });
+
+    it("multiplies in the primary's unlocked passive, but not twice for the same ability", () => {
+      pick("#primary", "brute"); // its passive is Hustle
+      pick("#rank-ability", "Any ability");
+      const stored = cell("Echo", "Atk");
+      pick("#rank-ability", "Huge Power");
+      expect(cell("Echo", "Atk")).toBe(Math.floor(stored * 2));
+      setPassive(true);
+      expect(cell("Echo", "Atk")).toBe(Math.floor(stored * 3));
+      expect(note()).toContain("Together: Atk ×3 in battle.");
+      pick("#primary", "echo"); // its passive is Huge Power, the same as the chosen ability
+      expect(cell("Echo", "Atk")).toBe(Math.floor(stored * 2));
+      expect(note()).toBe("Counting Huge Power (Atk ×2 in battle).");
+    });
+
+    it("shows max HP 1 for Wonder Guard", () => {
+      pick("#rank-ability", "Wonder Guard");
+      expect(rowNames()).toEqual(["Brute"]);
+      expect(cell("Brute", "HP")).toBe(1);
+      expect(note()).toBe("Counting Wonder Guard (max HP is 1).");
+    });
+
+    it("selects the asked-for ability when a partner is chosen from the list", () => {
+      pick("#secondary", "colossus");
+      pick("#rank-ability", "Pure Power"); // Brute's second regular ability
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("1");
+      expect(cardAbility()).toContain("Ability: Pure Power");
+      pick("#secondary", "colossus");
+      pick("#rank-ability", "Wonder Guard"); // Brute's hidden ability
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("2");
+      expect(cardAbility()).toContain("Ability: Wonder Guard (Hidden)");
+    });
+
+    it("also sets it when the partner chosen is already the secondary", () => {
+      pick("#secondary", "brute");
+      expect(abilityOnCard()).toBe("0");
+      pick("#rank-ability", "Pure Power");
+      clickRow("Brute");
+      expect(abilityOnCard()).toBe("1");
+      expect(cardAbility()).toContain("Ability: Pure Power");
+    });
+
+    it("starts from the first ability when no ability is asked for", () => {
+      pick("#secondary", "brute");
+      pick("#rank-ability", "Any ability");
+      ($("#ability") as HTMLSelectElement).value = "2";
+      ($("#ability") as HTMLSelectElement).dispatchEvent(new Event("change", { bubbles: true }));
+      clickRow("Colossus");
+      expect(abilityOnCard()).toBe("0");
+      expect(cardAbility()).toBe("Ability: Ability");
+    });
+
+    it("leaves the ability alone when the asked-for one is not on the chosen partner", () => {
+      pick("#rank-ability", "Huge Power");
+      clickRow("Echo");
+      expect(abilityOnCard()).toBe("0");
+      expect(cardAbility()).toContain("Ability: Huge Power");
+    });
+
+    it("has no note for an ability that changes no stat", () => {
+      pick("#rank-ability", "Ability");
+      expect(rows().length).toBeGreaterThan(0);
+      expect(note()).toBeUndefined();
+    });
+  });
+
   it("puts the form filters in a group of their own, apart from rank, type and ability", () => {
     const forms = $("#partners fieldset.pforms") as HTMLElement;
     expect(forms.querySelector("legend")?.textContent).toBe("Hide forms");

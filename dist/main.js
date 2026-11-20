@@ -5,7 +5,7 @@ import { clampIv, clampLevel, fuse, statAtLevel } from "./fuse.js";
 import { battleMultiplier, battleStat, clampCount, fusedItemLines, HELD_ITEM_LIMITS, mergeHeldItems, SPECIES_ITEMS, speciesItemsOf, } from "./heldItems.js";
 import { fusedSpeciesName } from "./fusionName.js";
 import { NATURES, natureLabel, natureMultiplier } from "./natures.js";
-import { rankPartners } from "./partners.js";
+import { countedNote, rankPartners } from "./partners.js";
 import { decodeSetup, defaultFilters, emptyItems, encodeSetup } from "./share.js";
 import { STAT_NAMES } from "./types.js";
 const COLORS = {
@@ -146,18 +146,26 @@ function marker(className, title, position) {
 // ability) only when the secondary Pokémon changes, not on every re-render.
 let abilityListFor = -1;
 let abilityList = [];
+/** Set when a partner is chosen from the Best partner list while an ability is asked for: the Ability box then shows that one. */
+let abilityOnPick;
 function syncAbilityOptions(secondary) {
-    if (abilityListFor === secondaryBox.index)
-        return;
-    abilityListFor = secondaryBox.index;
-    abilityList = abilityChoices(secondary);
-    abilitySelect.replaceChildren(...abilityList.map((choice, i) => {
-        const option = h("option", undefined, choice.label);
-        option.value = String(i);
-        return option;
-    }));
-    abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
-    abilitySelect.disabled = abilityList.length === 0;
+    if (abilityListFor !== secondaryBox.index) {
+        abilityListFor = secondaryBox.index;
+        abilityList = abilityChoices(secondary);
+        abilitySelect.replaceChildren(...abilityList.map((choice, i) => {
+            const option = h("option", undefined, choice.label);
+            option.value = String(i);
+            return option;
+        }));
+        abilitySelect.selectedIndex = 0; // explicit, so the reset is the same in every browser and in jsdom
+        abilitySelect.disabled = abilityList.length === 0;
+    }
+    if (abilityOnPick !== undefined) {
+        const index = abilityList.findIndex(choice => choice.name === abilityOnPick);
+        if (index >= 0)
+            abilitySelect.selectedIndex = index;
+        abilityOnPick = undefined;
+    }
 }
 /** Shows the species items this Pokémon can use itself and clears the rest. */
 function syncSpeciesItems(group, pokemon) {
@@ -317,6 +325,8 @@ function renderPartners(primary, level, ivs, held, nature) {
         level, ivs, rankBy: by, hideMax: maxChk.checked, hideMega: megaChk.checked, hideSpecial: specialChk.checked, limit: 10,
         type: (typeSel.value || undefined),
         ability: wantedAbility(),
+        passive: primary.passive,
+        passiveUnlocked: passiveToggle.checked,
         natureMultiplier: i => natureMultiplier(NATURES[nature], i),
         baseItems: { sweetJuice: held.sweetJuice, foulJuice: held.foulJuice, oldGateau: held.oldGateau },
         heldFor: i => ({ vitamin: held.vitamins[i], machoBrace: held.machoBrace, soulDew: held.soulDew }),
@@ -349,6 +359,7 @@ function renderPartners(primary, level, ivs, held, nature) {
             choose.setAttribute("aria-current", "true");
         tr.onclick = () => {
             refocusPartner = p.secondary.name;
+            abilityOnPick = wantedAbility(); // the list counted this ability for the partner, so the card should too
             secondaryBox.setIndex(dex.indexOf(p.secondary));
             render();
         };
@@ -387,7 +398,9 @@ function renderPartners(primary, level, ivs, held, nature) {
         table.append(tr);
     });
     // With no matches the message stands alone, so the passive line does not distract from it.
-    partnerBody.replaceChildren(...(top.length ? [passiveLine, table] : [h("p", undefined, "No partners match these filters.")]));
+    const counted = countedNote(wanted, primary.passive, passiveToggle.checked);
+    const countedLine = counted ? [h("p", "hint partnote", counted)] : [];
+    partnerBody.replaceChildren(...(top.length ? [passiveLine, ...countedLine, table] : [h("p", undefined, "No partners match these filters.")]));
     // Picking a partner redraws the list, so keyboard focus goes back to the button that was used.
     if (refocusPartner !== undefined) {
         const name = refocusPartner;
