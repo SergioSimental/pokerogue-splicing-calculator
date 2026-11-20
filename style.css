@@ -61,7 +61,10 @@ button{cursor:pointer;font-size:1.2rem}
 .itemrow legend{font-weight:600;padding:0 .4rem}
 .itemrow{container-type:inline-size}
 .itemrow .nums{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
-/* "Macho Brace" needs about 6.5rem, so a narrow box uses fewer columns instead of wrapping the label. */
+/* The widest label, "Macho Brace", is about 6.3rem (101px) wide. The thresholds are the width of .itemrow, so they include
+   the fieldset's padding and border (about 1.45rem) and the .35rem gaps between columns. At 30rem each of 4 columns is
+   about 6.9rem (110px), and at 23rem each of 3 is about 6.95rem (111px), which leaves about 10px to spare. A narrower box
+   uses fewer, wider columns instead of wrapping the label. If a label gets longer or the padding or gap changes, redo this. */
 @container (max-width:30rem){.itemrow .nums{grid-template-columns:repeat(3,1fr)}}
 @container (max-width:23rem){.itemrow .nums{grid-template-columns:repeat(2,1fr)}}
 .itemrow .nums label{gap:.15rem;min-width:0;align-content:end}
