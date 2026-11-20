@@ -107,8 +107,11 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
-- Open the finished page on a real phone and in Safari, which have not been tried: the card layout under 700 px, the address bar while typing fast, and the Ability box after a partner is chosen from the list
+- Try the page in Safari on an iPhone. It has been checked on a Pixel 9a in Chrome, portrait and landscape (the layout, and the link shown in the address bar), but not in Safari, which limits how often the address may be changed, so check the address bar while typing fast and the Ability box after a partner is chosen from the list
 - Try the page with a screen reader (VoiceOver or NVDA). Roles, button names and a screen-reader-only class are in place, but nothing has been listened to; the partner table on a phone is the likeliest place for a surprise
+- Check the Types column in the Best partner table when a partner has two long type names (Fighting and Fairy, say): two chips came close to the Abilities text on a landscape phone, so the column may need to be a little wider
+- Make the "Ability of the fused Pokémon" box as wide as the pickers above it, with the same arrow, which is only cosmetic
+- Make the Hide forms checkboxes larger for thumbs: they are about 24 px, under the usual 44 px touch size, although the label is tappable too
 - Update the dependencies that are behind: vitest and `@types/node` have small updates, and jsdom 28 to 31 and TypeScript 5.9 to 7 are larger jumps to take when wanted
 - Split the Best partner panel out of `src/main.ts` if that file keeps growing (it is about 700 lines today and well covered by tests, so there is no hurry)
 - Leave the `rb=` parameter out of a link when the rank is not one of the six stats; the page cannot produce that today, but a hand-built setup could
