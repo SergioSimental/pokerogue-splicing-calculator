@@ -13,8 +13,9 @@ Browsers block `fetch` on `file://`, so always use the local server. Use `npm ru
 ## Tests
 ```bash
 npm test
+npm run typecheck   # type-checks src/ and tests/ (Vitest itself does not check types)
 ```
-Tests (Vitest) cover the fusion rules, level and IV math (checked against an independent port of the game's stat formula), held items, abilities that change stats, natures, the best partner ranking and its filters, the link format and loading a build from a link, the shape of `data/pokemon.json`, the searchable dropdown's keyboard and mouse behavior, and that Pokémon names are always shown as plain text and never parsed as HTML. The UI tests run in a simulated browser (jsdom). They live in the `tests/` folder and are not part of the browser build. A GitHub Actions workflow (`.github/workflows/test.yml`) runs them on every push and also checks that the committed `dist/` matches `src/`.
+Tests (Vitest) cover the fusion rules, level and IV math (checked against an independent port of the game's stat formula), held items, abilities that change stats, natures, the best partner ranking and its filters, the link format and loading a build from a link, the shape of `data/pokemon.json`, the searchable dropdown's keyboard and mouse behavior, and that Pokémon names are always shown as plain text and never parsed as HTML. The UI tests run in a simulated browser (jsdom). They live in the `tests/` folder and are not part of the browser build. A GitHub Actions workflow (`.github/workflows/test.yml`) type-checks the source and the tests, runs them on every push, and checks that the committed `dist/` matches `src/`.
 
 ## Deploy
 The compiled `dist/` folder is committed, so no CI is needed. Run `npm run build` before pushing, then enable **Settings > Pages > Deploy from branch > main / root**.
@@ -106,6 +107,11 @@ A GitHub Actions workflow (`.github/workflows/update-data.yml`) runs the same sc
 
 ## Roadmap
 - Check the stats with vitamins, Macho Brace, Soul Dew and Shuckle Juice against the real game when a real case is available (PokeRogue's own tests only cover Eviolite and the species items, and those already match)
+- Open the finished page on a real phone and in Safari, which have not been tried: the card layout under 700 px, the address bar while typing fast, and the Ability box after a partner is chosen from the list
+- Try the page with a screen reader (VoiceOver or NVDA). Roles, button names and a screen-reader-only class are in place, but nothing has been listened to; the partner table on a phone is the likeliest place for a surprise
+- Update the dependencies that are behind: vitest and `@types/node` have small updates, and jsdom 28 to 31 and TypeScript 5.9 to 7 are larger jumps to take when wanted
+- Split the Best partner panel out of `src/main.ts` if that file keeps growing (it is about 700 lines today and well covered by tests, so there is no hurry)
+- Leave the `rb=` parameter out of a link when the rank is not one of the six stats; the page cannot produce that today, but a hand-built setup could
 
 ## License
 Copyright (c) 2026 SergioSimental. Includes code from PokeRogue, copyright 2024-2026 Pagefault Games (AGPL-3.0-only). Licensed under the [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only). The project includes a port of code from PokeRogue (`src/fusionName.ts`), which is itself AGPL-3.0 licensed, so the whole project is released under the same licence. If you run a modified version of this site for other people, the AGPL requires you to offer them its source code; the page links to this repository for that reason. Earlier versions of this project (before the licence changed) were released under the MIT licence, and copies of those remain under it.

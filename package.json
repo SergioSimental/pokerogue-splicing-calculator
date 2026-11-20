@@ -8,6 +8,7 @@
     "watch": "tsc --watch",
     "serve": "npx serve .",
     "update-data": "node scripts/update-data.mjs",
+    "typecheck": "tsc -p tests",
     "test": "vitest run"
   },
   "engines": {

@@ -21,6 +21,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Type-check the source and the tests
+        run: npm run typecheck
+
       - name: Run unit tests
         run: npm test
 
